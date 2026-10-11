@@ -1,0 +1,20 @@
+2026-10-10T23:21:33-03:00
+7e9ef1244b3f015ab64949e5821346512cff8e2b
+gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)
+x86_64
+Model name:                              AMD Ryzen 7 5700X3D 8-Core Processor
+03e2b18bc1aed0d7f10c951cd49871d7f0b8e1b05b77c53c3872a37bdb3dc48a  bench/corpus/identifiers_1m.txt
+431321cf85aa37c5a64d4149c4f628bb6057d3e4014a3866246779455b441df1  bench/corpus/identifiers_64k.txt
+b0a813d617833d8f95cf249b9f8b56fe236a8164c0e364f4792f4ed01ecf9519  bench/corpus/identifiers_8m.txt
+00da8a88c8111ecbbb655844480e3f4d8c94a9cf29befc2d698b85aa08ba0459  bench/corpus/keywords_1m.txt
+42f65b913218e1b6498b6c72c3b704b0283a567ede27a6bffaa0ac8831cce1d4  bench/corpus/keywords_64k.txt
+0ededa15545d89014f7fc462c26c1a90a25204b80de9ddb8174b8a7a6c82c3a2  bench/corpus/keywords_8m.txt
+30ff014e56568cf979e8c8a01c062cdb63bae3c2c2e180254f6bd59fc88ad474  bench/corpus/mixed_1m.txt
+bcabfbe38f0c4b16e6b5251bafc16bd4faafe4c4fba6ce25773af66ec9e678c5  bench/corpus/mixed_64k.txt
+4e0981363862670db588544f20711d2d787b9634b564c1eba973d07ec5daf7af  bench/corpus/mixed_8m.txt
+2e9357f2b16c4df51fb28eb2c8d39ed1049b0596af81f67a83a03d9101e81fdf  bench/corpus/operators_1m.txt
+eec91d1877c0d2273b4d0b744be2bb7280b5cda2f2247d5c93f3a1745313da93  bench/corpus/operators_64k.txt
+19ce63e3860891fefd4890f4e5d84259517ff365cdda9ee6c9c9e76884297b66  bench/corpus/operators_8m.txt
+3df9146d90f21f391097077f7c09697e5a1df2ad6b5e45625cd6abd7fd290037  bench/corpus/prefixes_1m.txt
+15ee1aa8fe6b650bd040816e5866e8e40300f6fcca14f99785a86c9d510cff80  bench/corpus/prefixes_64k.txt
+a8451e8e2502f855e25e8e73763912f69a715fdec02cb20848edf8ed43903dd6  bench/corpus/prefixes_8m.txt
