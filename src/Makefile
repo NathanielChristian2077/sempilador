@@ -1,9 +1,9 @@
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -Wpedantic -O2
 
-.PHONY: test test-source test-token
+.PHONY: test test-source test-token test-lexer
 
-test: test-source test-token
+test: test-source test-token test-lexer
 
 test-source:
 	@$(CC) $(CFLAGS) -Isource \
@@ -16,3 +16,9 @@ test-token:
 		test/token_test.c token/token.c \
 		-o /tmp/token_test
 	@/tmp/token_test
+
+test-lexer:
+	@$(CC) $(CFLAGS) -Itoken -Ilexer \
+		test/lexer_test.c lexer/lexer.c \
+		-o /tmp/lexer_test
+	@/tmp/lexer_test
