@@ -22,3 +22,24 @@ test-lexer:
 		test/lexer_test.c lexer/lexer.c \
 		-o /tmp/lexer_test
 	@/tmp/lexer_test
+
+
+.PHONY: test-parser test-parser-integration test-parser-sanitize
+
+test: test-parser test-parser-integration
+
+test-parser:
+	$(CC) $(CFLAGS) test/parser_test.c parser/parser.c -o /tmp/sempilador_parser_test
+	/tmp/sempilador_parser_test
+
+test-parser-integration:
+	$(CC) $(CFLAGS) test/parser_integration_test.c parser/parser.c lexer/lexer.c -o /tmp/sempilador_parser_integration_test
+	/tmp/sempilador_parser_integration_test
+
+PARSER_SAN_FLAGS = -std=c11 -g -O1 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer
+
+test-parser-sanitize:
+	$(CC) $(PARSER_SAN_FLAGS) test/parser_test.c parser/parser.c -o /tmp/sempilador_parser_test_san
+	/tmp/sempilador_parser_test_san
+	$(CC) $(PARSER_SAN_FLAGS) test/parser_integration_test.c parser/parser.c lexer/lexer.c -o /tmp/sempilador_parser_integration_test_san
+	/tmp/sempilador_parser_integration_test_san
