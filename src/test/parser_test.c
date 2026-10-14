@@ -21,7 +21,7 @@ static void test_cursor(void)
     assert(!parser_expect(&parser, TOK_INT));
     assert(parser.current == 1);
     assert(parser.result.status == PARSE_SYNTAX_ERROR);
-    assert(parser.result.diagnostic.expected[TOK_INT]);
+    assert(parser.result.diagnostics[0].expected[TOK_INT]);
     assert(!parser_expect(&parser, TOK_MAIN));
     assert(parser.current == 1);
     assert(parser_init(&parser, tokens, COUNT(tokens)));

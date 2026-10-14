@@ -5,6 +5,14 @@ static bool parse_expression(Parser *parser);
 static bool parse_additive(Parser *parser);
 static bool parse_factor(Parser *parser);
 
+typedef enum {
+    RECOVER_DECLARATION,
+    RECOVER_COMMAND,
+    RECOVER_FUNCTION
+} RecoveryContext;
+
+static bool synchronize(Parser *parser, size_t start, RecoveryContext context);
+
 #define COUNT(a) (sizeof(a) / sizeof((a)[0]))
 
 static const TokenKind type_starts[] = {
@@ -14,17 +22,22 @@ static const TokenKind factor_starts[] = {
     TOK_ID, TOK_NUM_INT, TOK_NUM_DEC, TOK_PLUS, TOK_MINUS,
     TOK_TEXTO, TOK_NOT, TOK_LPAREN
 };
-static const TokenKind command_starts[] = {
+static const TokenKind command_follow[] = {
     TOK_SCANF, TOK_PRINTLN, TOK_ID, TOK_FUNC, TOK_IF, TOK_WHILE,
     TOK_FOR, TOK_RETURN, TOK_RBRACE
+};
+static const TokenKind function_follow[] = {
+    TOK_CHAR, TOK_FLOAT, TOK_INT, TOK_BOOLEAN, TOK_VOID, TOK_MAIN
 };
 
 static bool record_error(Parser *parser, ParseStatus status,
                          const Token *token)
 {
-    if (parser != NULL && parser->result.status == PARSE_OK) {
+    if (parser != NULL && !parser->stopped &&
+        (!parser->recovering || status != PARSE_SYNTAX_ERROR)) {
         parser->result.status = status;
-        parser->result.diagnostic = (ParseDiagnostic){
+        parser->result.diagnostics[parser->result.diagnostic_count++] = (ParseDiagnostic){
+            .status = status,
             .token_index = parser->current,
             .has_found = token != NULL,
             .has_location = token != NULL && token->line > 0 && token->column > 0,
@@ -32,6 +45,13 @@ static bool record_error(Parser *parser, ParseStatus status,
             .column = token != NULL ? token->column : 0,
             .found = token != NULL ? token->kind : TOK_INVALID
         };
+        parser->recovering = true;
+        if (status != PARSE_SYNTAX_ERROR)
+            parser->stopped = true;
+        if (parser->result.diagnostic_count == PARSE_MAX_DIAGNOSTICS) {
+            parser->result.limit_reached = true;
+            parser->stopped = true;
+        }
     }
     return false;
 }
@@ -39,12 +59,12 @@ static bool record_error(Parser *parser, ParseStatus status,
 static bool fail_expected(Parser *parser, const TokenKind *expected, size_t count)
 {
     const Token *token = parser_peek(parser);
-    if (parser == NULL || parser->result.status != PARSE_OK)
+    if (parser == NULL || parser->stopped || parser->recovering)
         return false;
     record_error(parser, token != NULL ? PARSE_SYNTAX_ERROR : PARSE_INVALID_INPUT,
                  token);
     for (size_t i = 0; i < count; ++i)
-        parser->result.diagnostic.expected[expected[i]] = true;
+        parser->result.diagnostics[parser->result.diagnostic_count - 1].expected[expected[i]] = true;
     return false;
 }
 
@@ -81,7 +101,7 @@ const Token *parser_peek(Parser *parser)
 bool parser_expect(Parser *parser, TokenKind expected)
 {
     const Token *token = parser_peek(parser);
-    if (parser == NULL || parser->result.status != PARSE_OK)
+    if (parser == NULL || parser->stopped || parser->recovering)
         return false;
     if ((unsigned)expected > (unsigned)TOK_COMMENT)
         return record_error(parser, PARSE_INVALID_INPUT, token);
@@ -124,6 +144,109 @@ static bool start_type(TokenKind kind)
            kind == TOK_INT || kind == TOK_BOOLEAN;
 }
 
+static bool in_set(TokenKind kind, const TokenKind *set, size_t count)
+{
+    for (size_t i = 0; i < count; ++i) {
+        if (kind == set[i])
+            return true;
+    }
+    return false;
+}
+
+static bool recovery_candidate(TokenKind kind, RecoveryContext context)
+{
+    if (context == RECOVER_FUNCTION)
+        return in_set(kind, function_follow, COUNT(function_follow));
+    if (context == RECOVER_DECLARATION && start_type(kind))
+        return true;
+    return in_set(kind, command_follow, COUNT(command_follow));
+}
+
+static bool assignment_ahead(const Parser *parser)
+{
+    size_t next = parser->current + 1;
+    while (next < parser->count && parser->tokens[next].kind == TOK_COMMENT)
+        ++next;
+    return next < parser->count && parser->tokens[next].kind == TOK_ASSIGN;
+}
+
+static void track_delimiter(TokenKind kind, size_t *round, size_t *square,
+                            size_t *braces)
+{
+    switch (kind) {
+    case TOK_LPAREN: ++*round; break;
+    case TOK_RPAREN: if (*round > 0) --*round; break;
+    case TOK_LBRACKET: ++*square; break;
+    case TOK_RBRACKET: if (*square > 0) --*square; break;
+    case TOK_LBRACE:
+        if (*braces == 0) {
+            *round = 0;
+            *square = 0;
+        }
+        ++*braces;
+        break;
+    case TOK_RBRACE: if (*braces > 0) --*braces; break;
+    default: break;
+    }
+}
+
+/* Resume at a context-specific FIRST/FOLLOW boundary. */
+static bool synchronize(Parser *parser, size_t start, RecoveryContext context)
+{
+    if (parser->stopped)
+        return false;
+    size_t round = 0, square = 0, braces = 0;
+    for (size_t i = start; i < parser->current; ++i)
+        track_delimiter(parser->tokens[i].kind, &round, &square, &braces);
+    TokenKind first = parser->tokens[start].kind;
+    bool control = first == TOK_FOR || first == TOK_WHILE || first == TOK_IF;
+
+    for (;;) {
+        const Token *token = parser_peek(parser);
+        if (parser->stopped || token == NULL)
+            return false;
+        TokenKind kind = token->kind;
+        if (kind == TOK_EOF) {
+            parser->recovering = false;
+            return true;
+        }
+        if (kind == TOK_MAIN) {
+            if (context != RECOVER_FUNCTION)
+                return false;
+            parser->recovering = false;
+            return true;
+        }
+        if (kind == TOK_RBRACE && braces == 0 && context != RECOVER_FUNCTION) {
+            parser->recovering = false;
+            return true;
+        }
+        if (braces == 0 && round == 0 && square == 0 &&
+            parser->current > start && recovery_candidate(kind, context) &&
+            (kind != TOK_ID || assignment_ahead(parser))) {
+            parser->recovering = false;
+            return true;
+        }
+        if (kind == TOK_SEMICOLON && braces == 0 &&
+            (context == RECOVER_DECLARATION || (!control && context != RECOVER_FUNCTION) ||
+             (round == 0 && square == 0))) {
+            ++parser->current;
+            parser->recovering = false;
+            return true;
+        }
+        bool closes_body = kind == TOK_RBRACE && braces == 1;
+        track_delimiter(kind, &round, &square, &braces);
+        ++parser->current;
+        if (closes_body) {
+            if (first == TOK_IF && at(parser, TOK_ELSE)) {
+                ++parser->current;
+                continue;
+            }
+            parser->recovering = false;
+            return !parser->stopped;
+        }
+    }
+}
+
 static bool parse_base_type(Parser *parser)
 {
     const Token *token = parser_peek(parser);
@@ -162,9 +285,12 @@ static bool parse_variables_list(Parser *parser)
 {
     const Token *token = parser_peek(parser);
     while (token != NULL && start_type(token->kind)) {
+        size_t start = parser->current;
         if (!parse_type(parser) || !parser_expect(parser, TOK_ID) ||
-            !parse_id_list(parser) || !parser_expect(parser, TOK_SEMICOLON))
-            return false;
+            !parse_id_list(parser) || !parser_expect(parser, TOK_SEMICOLON)) {
+            if (!synchronize(parser, start, RECOVER_DECLARATION))
+                return false;
+        }
         token = parser_peek(parser);
     }
     return true;
@@ -413,7 +539,7 @@ static bool parse_command(Parser *parser)
 {
     const Token *token = parser_peek(parser);
     if (token == NULL)
-        return fail_expected(parser, command_starts, COUNT(command_starts));
+        return fail_expected(parser, command_follow, COUNT(command_follow));
     switch (token->kind) {
     case TOK_SCANF: return parse_read(parser);
     case TOK_PRINTLN: return parse_write(parser);
@@ -423,17 +549,20 @@ static bool parse_command(Parser *parser)
     case TOK_WHILE: return parse_while(parser);
     case TOK_FOR: return parse_for(parser);
     case TOK_RETURN: return parse_return(parser);
-    default: return fail_expected(parser, command_starts, COUNT(command_starts));
+    default: return fail_expected(parser, command_follow, COUNT(command_follow));
     }
 }
 
 static bool parse_commands(Parser *parser)
 {
     while (!at(parser, TOK_RBRACE)) {
+        size_t start = parser->current;
         if (at(parser, TOK_EOF))
             return parser_expect(parser, TOK_RBRACE);
-        if (!parse_command(parser))
-            return false;
+        if (!parse_command(parser)) {
+            if (!synchronize(parser, start, RECOVER_COMMAND))
+                return false;
+        }
     }
     return true;
 }
@@ -485,8 +614,18 @@ bool parse_main(Parser *parser)
 static bool parse_program(Parser *parser)
 {
     const Token *token = parser_peek(parser);
-    while (token != NULL && (start_type(token->kind) || token->kind == TOK_VOID)) {
-        if (!parse_function(parser))
+    while (token != NULL && token->kind != TOK_MAIN && token->kind != TOK_EOF) {
+        size_t start = parser->current;
+        bool recognized = false;
+        if (start_type(token->kind) || token->kind == TOK_VOID) {
+            recognized = parse_function(parser);
+        } else {
+            const TokenKind expected[] = {
+                TOK_CHAR, TOK_FLOAT, TOK_INT, TOK_BOOLEAN, TOK_VOID, TOK_MAIN
+            };
+            fail_expected(parser, expected, COUNT(expected));
+        }
+        if (!recognized && !synchronize(parser, start, RECOVER_FUNCTION))
             return false;
         token = parser_peek(parser);
     }
@@ -499,7 +638,7 @@ static bool parse_program(Parser *parser)
     return parse_main(parser) && parser_expect(parser, TOK_EOF);
 }
 
-/* Validate the token array and return the first recognition error. */
+/* Validate the token array and collect bounded recognition diagnostics. */
 ParseResult parser_parse(const Token *tokens, size_t count)
 {
     Parser parser = {0};
@@ -517,7 +656,7 @@ ParseResult parser_parse(const Token *tokens, size_t count)
     if (tokens[count - 1].kind != TOK_EOF) {
         parser.current = count;
         record_error(&parser, PARSE_INVALID_INPUT, NULL);
-        parser.result.diagnostic.expected[TOK_EOF] = true;
+        parser.result.diagnostics[0].expected[TOK_EOF] = true;
         return parser.result;
     }
     parse_program(&parser);

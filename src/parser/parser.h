@@ -14,6 +14,7 @@ typedef enum {
 } ParseStatus;
 
 typedef struct {
+    ParseStatus status;
     size_t token_index;
     bool has_found;
     bool has_location;
@@ -23,9 +24,13 @@ typedef struct {
     bool expected[TOK_COMMENT + 1];
 } ParseDiagnostic;
 
+#define PARSE_MAX_DIAGNOSTICS 32
+
 typedef struct {
     ParseStatus status;
-    ParseDiagnostic diagnostic;
+    size_t diagnostic_count;
+    ParseDiagnostic diagnostics[PARSE_MAX_DIAGNOSTICS];
+    bool limit_reached;
 } ParseResult;
 
 typedef struct {
@@ -33,6 +38,8 @@ typedef struct {
     size_t count;
     size_t current;
     ParseResult result;
+    bool recovering;
+    bool stopped;
 } Parser;
 
 bool parser_init(Parser *parser, const Token *tokens, size_t count);

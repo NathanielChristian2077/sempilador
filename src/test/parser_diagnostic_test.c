@@ -19,11 +19,11 @@ static ParseResult diagnose(const char *source)
     } while (tokens[count - 1].kind != TOK_EOF);
     ParseResult result = parser_parse(tokens, count);
     if (result.status != PARSE_OK) {
-        assert(result.diagnostic.token_index < count);
-        const Token *found = &tokens[result.diagnostic.token_index];
-        assert(result.diagnostic.found == found->kind);
-        assert(result.diagnostic.line == found->line);
-        assert(result.diagnostic.column == found->column);
+        assert(result.diagnostics[0].token_index < count);
+        const Token *found = &tokens[result.diagnostics[0].token_index];
+        assert(result.diagnostics[0].found == found->kind);
+        assert(result.diagnostics[0].line == found->line);
+        assert(result.diagnostics[0].column == found->column);
     }
     return result;
 }
@@ -34,7 +34,7 @@ static void check_expected(ParseResult result, const TokenKind *kinds, size_t co
         bool expected = false;
         for (size_t j = 0; j < count; ++j)
             expected = expected || kinds[j] == (TokenKind)i;
-        assert(result.diagnostic.expected[i] == expected);
+        assert(result.diagnostics[0].expected[i] == expected);
     }
 }
 
@@ -47,11 +47,11 @@ static ParseResult syntax(const char *source, uint32_t line, uint32_t column,
 {
     ParseResult result = diagnose(source);
     assert(result.status == PARSE_SYNTAX_ERROR);
-    assert(result.diagnostic.has_found);
-    assert(result.diagnostic.has_location);
-    assert(result.diagnostic.line == line);
-    assert(result.diagnostic.column == column);
-    assert(result.diagnostic.found == found);
+    assert(result.diagnostics[0].has_found);
+    assert(result.diagnostics[0].has_location);
+    assert(result.diagnostics[0].line == line);
+    assert(result.diagnostics[0].column == column);
+    assert(result.diagnostics[0].found == found);
     return result;
 }
 
@@ -92,7 +92,12 @@ static void test_syntax(void)
            TOK_WHILE, TOK_FOR, TOK_RETURN, TOK_RBRACE);
     result = syntax("main(){x=-;}", 1, 11, TOK_SEMICOLON);
     EXPECT(result, TOK_ID, TOK_NUM_INT, TOK_NUM_DEC);
-    result = syntax("main(){int x } @", 1, 14, TOK_RBRACE);
+    result = diagnose("main(){int x } @");
+    assert(result.status == PARSE_LEXICAL_ERROR);
+    assert(result.diagnostic_count == 2);
+    assert(result.diagnostics[0].status == PARSE_SYNTAX_ERROR);
+    assert(result.diagnostics[0].column == 14);
+    assert(result.diagnostics[1].status == PARSE_LEXICAL_ERROR);
     EXPECT(result, TOK_SEMICOLON);
     result = syntax("main(){x=; y=;}", 1, 10, TOK_SEMICOLON);
     EXPECT(result, TOK_ID, TOK_NUM_INT, TOK_NUM_DEC, TOK_PLUS, TOK_MINUS,
@@ -109,35 +114,35 @@ static void test_valid_and_lexical(void)
     for (size_t i = 0; i < COUNT(valid); ++i) {
         ParseResult result = diagnose(valid[i]);
         assert(result.status == PARSE_OK);
-        assert(!result.diagnostic.has_found);
-        assert(!result.diagnostic.has_location);
+        assert(!result.diagnostics[0].has_found);
+        assert(!result.diagnostics[0].has_location);
         check_expected(result, NULL, 0);
     }
     ParseResult result = diagnose("main(){@}");
     assert(result.status == PARSE_LEXICAL_ERROR);
-    assert(result.diagnostic.found == TOK_INVALID);
-    assert(result.diagnostic.line == 1 && result.diagnostic.column == 8);
+    assert(result.diagnostics[0].found == TOK_INVALID);
+    assert(result.diagnostics[0].line == 1 && result.diagnostics[0].column == 8);
     check_expected(result, NULL, 0);
     result = diagnose("main(){x=\"abc\n}");
     assert(result.status == PARSE_LEXICAL_ERROR);
-    assert(result.diagnostic.line == 1 && result.diagnostic.column == 10);
+    assert(result.diagnostics[0].line == 1 && result.diagnostics[0].column == 10);
 }
 
 static void test_contract_and_preservation(void)
 {
     ParseResult result = parser_parse(NULL, 0);
     assert(result.status == PARSE_INVALID_INPUT);
-    assert(!result.diagnostic.has_found && !result.diagnostic.has_location);
+    assert(!result.diagnostics[0].has_found && !result.diagnostics[0].has_location);
     const Token missing_eof[] = {{.kind = TOK_MAIN, .line = 1, .column = 1}};
     result = parser_parse(missing_eof, COUNT(missing_eof));
     assert(result.status == PARSE_INVALID_INPUT);
-    assert(result.diagnostic.token_index == COUNT(missing_eof));
-    assert(!result.diagnostic.has_found && !result.diagnostic.has_location);
+    assert(result.diagnostics[0].token_index == COUNT(missing_eof));
+    assert(!result.diagnostics[0].has_found && !result.diagnostics[0].has_location);
     EXPECT(result, TOK_EOF);
     const Token early_eof[] = {{.kind = TOK_EOF}, {.kind = TOK_EOF}};
     result = parser_parse(early_eof, COUNT(early_eof));
     assert(result.status == PARSE_INVALID_INPUT);
-    assert(result.diagnostic.has_found && !result.diagnostic.has_location);
+    assert(result.diagnostics[0].has_found && !result.diagnostics[0].has_location);
     const Token unknown[] = {{.kind = (TokenKind)-1}, {.kind = TOK_EOF}};
     assert(parser_parse(unknown, COUNT(unknown)).status == PARSE_INVALID_INPUT);
 
@@ -150,9 +155,9 @@ static void test_contract_and_preservation(void)
     assert(!parser_expect(&parser, TOK_FLOAT));
     assert(parser.current == 0);
     EXPECT(parser.result, TOK_INT);
-    assert(parser.result.diagnostic.found == TOK_MAIN);
-    assert(parser.result.diagnostic.line == 2);
-    assert(parser.result.diagnostic.column == 3);
+    assert(parser.result.diagnostics[0].found == TOK_MAIN);
+    assert(parser.result.diagnostics[0].line == 2);
+    assert(parser.result.diagnostics[0].column == 3);
     assert(parser_init(&parser, tokens, COUNT(tokens)));
     assert(parser.result.status == PARSE_OK);
     assert(parser_expect(&parser, TOK_MAIN));

@@ -34,7 +34,7 @@ static void check(const char *name, const char *source, bool valid)
         exit(EXIT_FAILURE);
     }
     if (result.status != PARSE_OK) {
-        const ParseDiagnostic *error = &result.diagnostic;
+        const ParseDiagnostic *error = &result.diagnostics[0];
         if (!error->has_found || !error->has_location || error->token_index >= count) {
             fprintf(stderr, "Diagnóstico sem posição: %s\n", name);
             exit(EXIT_FAILURE);
@@ -141,7 +141,6 @@ int main(void)
     for (size_t i = 0; i < COUNT(cases); ++i)
         check(cases[i].name, cases[i].source, cases[i].valid);
 
-    /* As oito combinações das três partes opcionais do for. */
     for (unsigned mask = 0; mask < 8; ++mask) {
         char source[128];
         snprintf(source, sizeof(source), "main(){for(%s;%s;%s){}}",
