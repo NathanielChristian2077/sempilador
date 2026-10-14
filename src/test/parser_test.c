@@ -20,6 +20,11 @@ static void test_cursor(void)
     assert(parser_peek(&parser) == &tokens[1]);
     assert(!parser_expect(&parser, TOK_INT));
     assert(parser.current == 1);
+    assert(parser.result.status == PARSE_SYNTAX_ERROR);
+    assert(parser.result.diagnostic.expected[TOK_INT]);
+    assert(!parser_expect(&parser, TOK_MAIN));
+    assert(parser.current == 1);
+    assert(parser_init(&parser, tokens, COUNT(tokens)));
     assert(parser_expect(&parser, TOK_MAIN));
     assert(parser.current == 2);
     assert(parser_expect(&parser, TOK_LPAREN));
@@ -51,7 +56,7 @@ static void check_kinds(const TokenKind *kinds, size_t count, bool expected)
     assert(count <= COUNT(tokens));
     for (size_t i = 0; i < count; ++i)
         tokens[i] = (Token){ .kind = kinds[i], .line = 1, .column = (uint32_t)i + 1 };
-    assert(parser_parse(tokens, count) == expected);
+    assert((parser_parse(tokens, count).status == PARSE_OK) == expected);
 }
 
 static void test_artificial_tokens(void)
@@ -74,7 +79,7 @@ static void test_artificial_tokens(void)
         for (size_t i = 0; i < n; ++i)
             prefix[i] = (Token){ .kind = declarations[i] };
         prefix[n] = (Token){ .kind = TOK_EOF };
-        assert(!parser_parse(prefix, n + 1));
+        assert(parser_parse(prefix, n + 1).status != PARSE_OK);
     }
 
     const TokenKind assignment[] = {
@@ -97,9 +102,9 @@ static void test_artificial_tokens(void)
     check_kinds(no_eof, COUNT(no_eof), false);
     const TokenKind unknown[] = {(TokenKind)999, TOK_EOF};
     check_kinds(unknown, COUNT(unknown), false);
-    assert(!parser_parse(NULL, 0));
+    assert(parser_parse(NULL, 0).status == PARSE_INVALID_INPUT);
     const Token end = { .kind = TOK_EOF };
-    assert(!parser_parse(&end, 1));
+    assert(parser_parse(&end, 1).status == PARSE_SYNTAX_ERROR);
 
     Token main_tokens[COUNT(empty)];
     for (size_t i = 0; i < COUNT(empty); ++i)
@@ -111,7 +116,7 @@ static void test_artificial_tokens(void)
     assert(parser_expect(&parser, TOK_EOF));
     
     for (size_t i = 0; i < 20; ++i)
-        assert(parser_parse(main_tokens, COUNT(main_tokens)));
+        assert(parser_parse(main_tokens, COUNT(main_tokens)).status == PARSE_OK);
 }
 
 int main(void)

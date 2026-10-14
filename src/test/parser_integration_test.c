@@ -28,9 +28,26 @@ static void check(const char *name, const char *source, bool valid)
         }
         tokens[count++] = lexer_next(&lexer);
     } while (tokens[count - 1].kind != TOK_EOF);
-    if (parser_parse(tokens, count) != valid) {
+    ParseResult result = parser_parse(tokens, count);
+    if ((result.status == PARSE_OK) != valid) {
         fprintf(stderr, "Falha: %s (esperado %s)\n", name, valid ? "válido" : "inválido");
         exit(EXIT_FAILURE);
+    }
+    if (result.status != PARSE_OK) {
+        const ParseDiagnostic *error = &result.diagnostic;
+        if (!error->has_found || !error->has_location || error->token_index >= count) {
+            fprintf(stderr, "Diagnóstico sem posição: %s\n", name);
+            exit(EXIT_FAILURE);
+        }
+        if (result.status == PARSE_SYNTAX_ERROR) {
+            bool has_expected = false;
+            for (size_t i = 0; i <= TOK_COMMENT; ++i)
+                has_expected = has_expected || error->expected[i];
+            if (!has_expected) {
+                fprintf(stderr, "Diagnóstico sem esperado: %s\n", name);
+                exit(EXIT_FAILURE);
+            }
+        }
     }
     
     if (valid) {
@@ -40,7 +57,7 @@ static void check(const char *name, const char *source, bool valid)
         for (size_t n = 0; n <= close; ++n) {
             Token saved = tokens[n];
             tokens[n] = (Token){ .kind = TOK_EOF };
-            bool accepted = parser_parse(tokens, n + 1);
+            bool accepted = parser_parse(tokens, n + 1).status == PARSE_OK;
             tokens[n] = saved;
             if (accepted) {
                 fprintf(stderr, "Prefixo inválido aceito: %s, token %zu\n", name, n);

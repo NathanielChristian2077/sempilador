@@ -5,12 +5,57 @@ static bool parse_expression(Parser *parser);
 static bool parse_additive(Parser *parser);
 static bool parse_factor(Parser *parser);
 
+#define COUNT(a) (sizeof(a) / sizeof((a)[0]))
+
+static const TokenKind type_starts[] = {
+    TOK_CHAR, TOK_FLOAT, TOK_INT, TOK_BOOLEAN
+};
+static const TokenKind factor_starts[] = {
+    TOK_ID, TOK_NUM_INT, TOK_NUM_DEC, TOK_PLUS, TOK_MINUS,
+    TOK_TEXTO, TOK_NOT, TOK_LPAREN
+};
+static const TokenKind command_starts[] = {
+    TOK_SCANF, TOK_PRINTLN, TOK_ID, TOK_FUNC, TOK_IF, TOK_WHILE,
+    TOK_FOR, TOK_RETURN, TOK_RBRACE
+};
+
+static bool record_error(Parser *parser, ParseStatus status,
+                         const Token *token)
+{
+    if (parser != NULL && parser->result.status == PARSE_OK) {
+        parser->result.status = status;
+        parser->result.diagnostic = (ParseDiagnostic){
+            .token_index = parser->current,
+            .has_found = token != NULL,
+            .has_location = token != NULL && token->line > 0 && token->column > 0,
+            .line = token != NULL ? token->line : 0,
+            .column = token != NULL ? token->column : 0,
+            .found = token != NULL ? token->kind : TOK_INVALID
+        };
+    }
+    return false;
+}
+
+static bool fail_expected(Parser *parser, const TokenKind *expected, size_t count)
+{
+    const Token *token = parser_peek(parser);
+    if (parser == NULL || parser->result.status != PARSE_OK)
+        return false;
+    record_error(parser, token != NULL ? PARSE_SYNTAX_ERROR : PARSE_INVALID_INPUT,
+                 token);
+    for (size_t i = 0; i < count; ++i)
+        parser->result.diagnostic.expected[expected[i]] = true;
+    return false;
+}
+
 /* Initialize the cursor with a borrowed token array. */
 bool parser_init(Parser *parser, const Token *tokens, size_t count)
 {
-    if (parser == NULL || tokens == NULL || count == 0)
+    if (parser == NULL)
         return false;
     *parser = (Parser){ .tokens = tokens, .count = count, .current = 0 };
+    if (tokens == NULL || count == 0)
+        return record_error(parser, PARSE_INVALID_INPUT, NULL);
     return true;
 }
 
@@ -24,15 +69,24 @@ const Token *parser_peek(Parser *parser)
         ++parser->current;
     if (parser->current >= parser->count)
         return NULL;
-    return &parser->tokens[parser->current];
+    const Token *token = &parser->tokens[parser->current];
+    if ((unsigned)token->kind > (unsigned)TOK_COMMENT)
+        record_error(parser, PARSE_INVALID_INPUT, token);
+    else if (token->kind == TOK_INVALID)
+        record_error(parser, PARSE_LEXICAL_ERROR, token);
+    return token;
 }
 
 /* Consume the expected token, keeping EOF in place. */
 bool parser_expect(Parser *parser, TokenKind expected)
 {
     const Token *token = parser_peek(parser);
-    if (token == NULL || token->kind == TOK_INVALID || token->kind != expected)
+    if (parser == NULL || parser->result.status != PARSE_OK)
         return false;
+    if ((unsigned)expected > (unsigned)TOK_COMMENT)
+        return record_error(parser, PARSE_INVALID_INPUT, token);
+    if (token == NULL || token->kind != expected)
+        return fail_expected(parser, &expected, 1);
     if (token->kind != TOK_EOF)
         ++parser->current;
     return true;
@@ -52,6 +106,18 @@ static bool consume(Parser *parser)
     return token != NULL && parser_expect(parser, token->kind);
 }
 
+static bool matches_any(Parser *parser, const TokenKind *kinds, size_t count)
+{
+    const Token *token = parser_peek(parser);
+    if (token == NULL)
+        return false;
+    for (size_t i = 0; i < count; ++i) {
+        if (token->kind == kinds[i])
+            return true;
+    }
+    return false;
+}
+
 static bool start_type(TokenKind kind)
 {
     return kind == TOK_CHAR || kind == TOK_FLOAT ||
@@ -61,7 +127,9 @@ static bool start_type(TokenKind kind)
 static bool parse_base_type(Parser *parser)
 {
     const Token *token = parser_peek(parser);
-    return token != NULL && start_type(token->kind) && consume(parser);
+    if (token != NULL && start_type(token->kind))
+        return consume(parser);
+    return fail_expected(parser, type_starts, COUNT(type_starts));
 }
 
 static bool parse_dimension(Parser *parser)
@@ -114,14 +182,20 @@ static bool parse_indices(Parser *parser)
 
 static bool parse_constant(Parser *parser)
 {
-    return parser_expect(parser, TOK_NUM_INT) || parser_expect(parser, TOK_NUM_DEC);
+    if (at(parser, TOK_NUM_INT) || at(parser, TOK_NUM_DEC))
+        return consume(parser);
+    const TokenKind expected[] = {TOK_NUM_INT, TOK_NUM_DEC};
+    return fail_expected(parser, expected, COUNT(expected));
 }
 
 static bool parse_term(Parser *parser)
 {
     if (at(parser, TOK_ID))
         return parser_expect(parser, TOK_ID) && parse_indices(parser);
-    return parse_constant(parser);
+    if (at(parser, TOK_NUM_INT) || at(parser, TOK_NUM_DEC))
+        return parse_constant(parser);
+    const TokenKind expected[] = {TOK_ID, TOK_NUM_INT, TOK_NUM_DEC};
+    return fail_expected(parser, expected, COUNT(expected));
 }
 
 static bool parse_factor(Parser *parser)
@@ -136,8 +210,11 @@ static bool parse_factor(Parser *parser)
     if (at(parser, TOK_PLUS) || at(parser, TOK_MINUS)) {
         if (!consume(parser))
             return false;
+        return parse_term(parser);
     }
-    return parse_term(parser);
+    if (at(parser, TOK_ID) || at(parser, TOK_NUM_INT) || at(parser, TOK_NUM_DEC))
+        return parse_term(parser);
+    return fail_expected(parser, factor_starts, COUNT(factor_starts));
 }
 
 static bool parse_multiplicative(Parser *parser)
@@ -198,6 +275,13 @@ static bool parse_arguments(Parser *parser)
 {
     if (at(parser, TOK_RPAREN))
         return true;
+    if (!matches_any(parser, factor_starts, COUNT(factor_starts))) {
+        const TokenKind expected[] = {
+            TOK_ID, TOK_NUM_INT, TOK_NUM_DEC, TOK_PLUS, TOK_MINUS,
+            TOK_TEXTO, TOK_NOT, TOK_LPAREN, TOK_RPAREN
+        };
+        return fail_expected(parser, expected, COUNT(expected));
+    }
     if (!parse_expression(parser))
         return false;
     while (at(parser, TOK_COMMA)) {
@@ -221,8 +305,16 @@ static bool parse_assignment(Parser *parser)
     if (at(parser, TOK_FUNC)) {
         if (!parse_call(parser))
             return false;
-    } else if (!parse_expression(parser)) {
-        return false;
+    } else {
+        if (!matches_any(parser, factor_starts, COUNT(factor_starts))) {
+            const TokenKind expected[] = {
+                TOK_ID, TOK_NUM_INT, TOK_NUM_DEC, TOK_PLUS, TOK_MINUS,
+                TOK_TEXTO, TOK_NOT, TOK_LPAREN, TOK_FUNC
+            };
+            return fail_expected(parser, expected, COUNT(expected));
+        }
+        if (!parse_expression(parser))
+            return false;
     }
     return parser_expect(parser, TOK_SEMICOLON);
 }
@@ -238,7 +330,10 @@ static bool parse_write_term(Parser *parser)
         return parse_read_term(parser);
     if (at(parser, TOK_TEXTO))
         return parser_expect(parser, TOK_TEXTO);
-    return parse_constant(parser);
+    if (at(parser, TOK_NUM_INT) || at(parser, TOK_NUM_DEC))
+        return parse_constant(parser);
+    const TokenKind expected[] = {TOK_ID, TOK_NUM_INT, TOK_NUM_DEC, TOK_TEXTO};
+    return fail_expected(parser, expected, COUNT(expected));
 }
 
 static bool parse_read(Parser *parser)
@@ -287,6 +382,10 @@ static bool parse_for_assignment(Parser *parser, TokenKind end)
 {
     if (at(parser, end))
         return true;
+    if (!at(parser, TOK_ID)) {
+        const TokenKind expected[] = {TOK_ID, end};
+        return fail_expected(parser, expected, COUNT(expected));
+    }
     return parser_expect(parser, TOK_ID) && parser_expect(parser, TOK_ASSIGN) &&
            parse_expression(parser);
 }
@@ -314,7 +413,7 @@ static bool parse_command(Parser *parser)
 {
     const Token *token = parser_peek(parser);
     if (token == NULL)
-        return false;
+        return fail_expected(parser, command_starts, COUNT(command_starts));
     switch (token->kind) {
     case TOK_SCANF: return parse_read(parser);
     case TOK_PRINTLN: return parse_write(parser);
@@ -324,13 +423,15 @@ static bool parse_command(Parser *parser)
     case TOK_WHILE: return parse_while(parser);
     case TOK_FOR: return parse_for(parser);
     case TOK_RETURN: return parse_return(parser);
-    default: return false;
+    default: return fail_expected(parser, command_starts, COUNT(command_starts));
     }
 }
 
 static bool parse_commands(Parser *parser)
 {
     while (!at(parser, TOK_RBRACE)) {
+        if (at(parser, TOK_EOF))
+            return parser_expect(parser, TOK_RBRACE);
         if (!parse_command(parser))
             return false;
     }
@@ -347,6 +448,11 @@ static bool parse_parameters(Parser *parser)
 {
     if (at(parser, TOK_RPAREN))
         return true;
+    const TokenKind expected[] = {
+        TOK_CHAR, TOK_FLOAT, TOK_INT, TOK_BOOLEAN, TOK_RPAREN
+    };
+    if (!matches_any(parser, type_starts, COUNT(type_starts)))
+        return fail_expected(parser, expected, COUNT(expected));
     if (!parse_type(parser) || !parser_expect(parser, TOK_ID))
         return false;
     while (at(parser, TOK_COMMA)) {
@@ -384,21 +490,36 @@ static bool parse_program(Parser *parser)
             return false;
         token = parser_peek(parser);
     }
+    if (!at(parser, TOK_MAIN)) {
+        const TokenKind expected[] = {
+            TOK_CHAR, TOK_FLOAT, TOK_INT, TOK_BOOLEAN, TOK_VOID, TOK_MAIN
+        };
+        return fail_expected(parser, expected, COUNT(expected));
+    }
     return parse_main(parser) && parser_expect(parser, TOK_EOF);
 }
 
-/* Validate the token array and recognize a complete program. */
-bool parser_parse(const Token *tokens, size_t count)
+/* Validate the token array and return the first recognition error. */
+ParseResult parser_parse(const Token *tokens, size_t count)
 {
-    Parser parser;
-    if (!parser_init(&parser, tokens, count) || tokens[count - 1].kind != TOK_EOF)
-        return false;
+    Parser parser = {0};
+    if (!parser_init(&parser, tokens, count))
+        return parser.result;
 
     for (size_t i = 0; i < count; ++i) {
         if ((unsigned)tokens[i].kind > (unsigned)TOK_COMMENT ||
-            tokens[i].kind == TOK_INVALID ||
-            (tokens[i].kind == TOK_EOF && i != count - 1))
-            return false;
+            (tokens[i].kind == TOK_EOF && i != count - 1)) {
+            parser.current = i;
+            record_error(&parser, PARSE_INVALID_INPUT, &tokens[i]);
+            return parser.result;
+        }
     }
-    return parse_program(&parser);
+    if (tokens[count - 1].kind != TOK_EOF) {
+        parser.current = count;
+        record_error(&parser, PARSE_INVALID_INPUT, NULL);
+        parser.result.diagnostic.expected[TOK_EOF] = true;
+        return parser.result;
+    }
+    parse_program(&parser);
+    return parser.result;
 }
