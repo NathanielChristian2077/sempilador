@@ -1,0 +1,6 @@
+main()
+{
+    int contador
+contador = 1;
+    println(contador);
+}
