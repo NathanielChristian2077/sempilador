@@ -32,7 +32,8 @@ SourceResult source_load(const char *path, SourceBuffer *out) {
     }
 
     size_t length = (size_t)file_size;
-    char *data = (char*)malloc(length);
+    /* +1 for the terminator; ftell fits in long, so it cannot wrap size_t. */
+    char *data = (char*)malloc(length + 1);
     if (data == NULL) {
         fclose(file);
         return SOURCE_ERR_ALLOC;
