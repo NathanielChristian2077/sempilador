@@ -1,101 +1,135 @@
+.DEFAULT_GOAL := build
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wextra -Wpedantic -O2
+CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O2
+CPPFLAGS ?=
+LDFLAGS ?=
+LDLIBS ?=
 BUILD_DIR ?= bin
+RE2C ?= re2c
+# Checked-in output and CI use re2c 4.1. Suppress dates, versions and path directives.
+RE2CFLAGS = --no-generation-date --no-version --no-debug-info -W -Werror
 
-SOURCES = source/source.c token/token.c lexer/lexer.c parser/parser.c symbol/symbol.c
+LEXER = lexer/lexer.c
+PARSER = parser/parser.c
+SEMANTIC = symbol/semantic.c type/type.c
+SOURCES = source/source.c token/token.c $(LEXER) $(PARSER) symbol/symbol.c $(SEMANTIC)
+HEADERS = $(wildcard source/*.h token/*.h lexer/*.h parser/*.h symbol/*.h type/*.h)
+SANITIZER_FLAGS = -std=c11 -g -O1 -Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined -fno-omit-frame-pointer
 
-.PHONY: build run clean
+.PHONY: build run clean regen-lexer check-generated test test-source test-token \
+        test-lexer test-lexer-contract test-parser test-parser-integration \
+        test-parser-diagnostics test-parser-recovery test-symbol test-type \
+        test-semantic-symbol test-build test-sanitize test-parser-sanitize \
+        test-symbol-sanitize bench-symbol
 
 build: $(BUILD_DIR)/sempilador
 
-$(BUILD_DIR)/sempilador: main.c $(SOURCES) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) main.c $(SOURCES) -o $@
+$(BUILD_DIR)/sempilador: main.c $(SOURCES) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) main.c $(SOURCES) $(LDFLAGS) $(LDLIBS) -o $@
 
 run: build
 	$(BUILD_DIR)/sempilador $(or $(FILE),test/valid.csim)
 
 $(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
+
+$(LEXER): lexer/lexer.re
+	$(RE2C) $(RE2CFLAGS) -o $@.tmp $<
+	mv $@.tmp $@
+
+regen-lexer:
+	$(RE2C) $(RE2CFLAGS) -o $(LEXER).tmp lexer/lexer.re
+	mv $(LEXER).tmp $(LEXER)
+
+check-generated: | $(BUILD_DIR)
+	$(RE2C) $(RE2CFLAGS) -o $(BUILD_DIR)/lexer.check.c lexer/lexer.re
+	diff -u $(LEXER) $(BUILD_DIR)/lexer.check.c
 
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: test test-source test-token test-lexer
+test: test-source test-token test-lexer test-lexer-contract test-parser \
+      test-parser-integration test-parser-diagnostics test-parser-recovery \
+      test-symbol test-type test-semantic-symbol test-build
 
-test: test-source test-token test-lexer
+$(BUILD_DIR)/source_test: test/source_test.c source/source.c $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/source_test.c source/source.c $(LDFLAGS) $(LDLIBS) -o $@
+test-source: $(BUILD_DIR)/source_test
+	$<
 
-test-source: | $(BUILD_DIR)
-	@$(CC) $(CFLAGS) -Isource \
-		test/source_test.c source/source.c \
-		-o $(BUILD_DIR)/source_test
-	@$(BUILD_DIR)/source_test
+$(BUILD_DIR)/token_test: test/token_test.c token/token.c $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/token_test.c token/token.c $(LDFLAGS) $(LDLIBS) -o $@
+test-token: $(BUILD_DIR)/token_test
+	$<
 
-test-token: | $(BUILD_DIR)
-	@$(CC) $(CFLAGS) -Itoken \
-		test/token_test.c token/token.c \
-		-o $(BUILD_DIR)/token_test
-	@$(BUILD_DIR)/token_test
+$(BUILD_DIR)/lexer_test: test/lexer_test.c $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/lexer_test.c $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-lexer: $(BUILD_DIR)/lexer_test
+	$<
 
-test-lexer: | $(BUILD_DIR)
-	@$(CC) $(CFLAGS) -Itoken -Ilexer \
-		test/lexer_test.c lexer/lexer.c \
-		-o $(BUILD_DIR)/lexer_test
-	@$(BUILD_DIR)/lexer_test
+$(BUILD_DIR)/lexer_contract_test: test/lexer_contract_test.c $(LEXER) $(PARSER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/lexer_contract_test.c $(LEXER) $(PARSER) $(LDFLAGS) $(LDLIBS) -o $@
+test-lexer-contract: $(BUILD_DIR)/lexer_contract_test
+	$<
 
+$(BUILD_DIR)/parser_test: test/parser_test.c $(PARSER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/parser_test.c $(PARSER) $(LDFLAGS) $(LDLIBS) -o $@
+test-parser: $(BUILD_DIR)/parser_test
+	$<
 
-.PHONY: test-parser test-parser-integration test-parser-diagnostics test-parser-recovery test-parser-sanitize
+$(BUILD_DIR)/parser_integration_test: test/parser_integration_test.c $(PARSER) $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/parser_integration_test.c $(PARSER) $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-parser-integration: $(BUILD_DIR)/parser_integration_test
+	$<
 
-test: test-parser test-parser-integration test-parser-diagnostics test-parser-recovery
+$(BUILD_DIR)/parser_diagnostic_test: test/parser_diagnostic_test.c $(PARSER) $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/parser_diagnostic_test.c $(PARSER) $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-parser-diagnostics: $(BUILD_DIR)/parser_diagnostic_test
+	$<
 
-test-parser: | $(BUILD_DIR)
-	$(CC) $(CFLAGS) test/parser_test.c parser/parser.c -o $(BUILD_DIR)/sempilador_parser_test
-	$(BUILD_DIR)/sempilador_parser_test
+$(BUILD_DIR)/parser_recovery_test: test/parser_recovery_test.c $(PARSER) $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/parser_recovery_test.c $(PARSER) $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-parser-recovery: $(BUILD_DIR)/parser_recovery_test
+	$<
 
-test-parser-integration: | $(BUILD_DIR)
-	$(CC) $(CFLAGS) test/parser_integration_test.c parser/parser.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_parser_integration_test
-	$(BUILD_DIR)/sempilador_parser_integration_test
+$(BUILD_DIR)/symbol_test: test/symbol_test.c symbol/symbol.c $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/symbol_test.c symbol/symbol.c $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-symbol: $(BUILD_DIR)/symbol_test
+	$<
 
-test-parser-diagnostics: | $(BUILD_DIR)
-	$(CC) $(CFLAGS) test/parser_diagnostic_test.c parser/parser.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_parser_diagnostic_test
-	$(BUILD_DIR)/sempilador_parser_diagnostic_test
+$(BUILD_DIR)/type_test: test/type_test.c type/type.c $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/type_test.c type/type.c $(LDFLAGS) $(LDLIBS) -o $@
+test-type: $(BUILD_DIR)/type_test
+	$<
 
-test-parser-recovery: | $(BUILD_DIR)
-	$(CC) $(CFLAGS) test/parser_recovery_test.c parser/parser.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_parser_recovery_test
-	$(BUILD_DIR)/sempilador_parser_recovery_test
-
-PARSER_SAN_FLAGS = -std=c11 -g -O1 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer
-
-test-parser-sanitize: | $(BUILD_DIR)
-	$(CC) $(PARSER_SAN_FLAGS) test/parser_test.c parser/parser.c -o $(BUILD_DIR)/sempilador_parser_test_san
-	$(BUILD_DIR)/sempilador_parser_test_san
-	$(CC) $(PARSER_SAN_FLAGS) test/parser_integration_test.c parser/parser.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_parser_integration_test_san
-	$(BUILD_DIR)/sempilador_parser_integration_test_san
-	$(CC) $(PARSER_SAN_FLAGS) test/parser_diagnostic_test.c parser/parser.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_parser_diagnostic_test_san
-	$(BUILD_DIR)/sempilador_parser_diagnostic_test_san
-	$(CC) $(PARSER_SAN_FLAGS) test/parser_recovery_test.c parser/parser.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_parser_recovery_test_san
-	$(BUILD_DIR)/sempilador_parser_recovery_test_san
-
-.PHONY: test-symbol test-symbol-sanitize bench-symbol
-
-test: test-symbol test-build
-
-test-symbol: | $(BUILD_DIR)
-	$(CC) $(CFLAGS) test/symbol_test.c symbol/symbol.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_symbol_test
-	$(BUILD_DIR)/sempilador_symbol_test
-
-test-symbol-sanitize: | $(BUILD_DIR)
-	$(CC) $(PARSER_SAN_FLAGS) test/symbol_test.c symbol/symbol.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_symbol_test_san
-	$(BUILD_DIR)/sempilador_symbol_test_san
-
-bench-symbol: | $(BUILD_DIR)
-	$(CC) $(CFLAGS) test/symbol_bench.c symbol/symbol.c lexer/lexer.c -o $(BUILD_DIR)/sempilador_symbol_bench
-	$(BUILD_DIR)/sempilador_symbol_bench
-
-.PHONY: test-build
+$(BUILD_DIR)/semantic_symbol_test: test/semantic_symbol_test.c $(SEMANTIC) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/semantic_symbol_test.c $(SEMANTIC) $(LDFLAGS) $(LDLIBS) -o $@
+test-semantic-symbol: $(BUILD_DIR)/semantic_symbol_test
+	$<
 
 test-build: build
 	$(BUILD_DIR)/sempilador test/valid.csim > $(BUILD_DIR)/test_build.out
 	grep -q "programa v" $(BUILD_DIR)/test_build.out
-	! $(BUILD_DIR)/sempilador test/symbol.csim > $(BUILD_DIR)/test_build_error.out
+	@status=0; $(BUILD_DIR)/sempilador test/symbol.csim > $(BUILD_DIR)/test_build_error.out || status=$$?; test "$$status" -eq 1
 	grep -q "Linha 4, coluna 1: esperado" $(BUILD_DIR)/test_build_error.out
 	grep -q "contador" $(BUILD_DIR)/test_build_error.out
+	@status=0; $(BUILD_DIR)/sempilador test/invalid_number.csim > $(BUILD_DIR)/test_invalid_number.out || status=$$?; test "$$status" -eq 1
+	grep -Fq 'Linha 1, coluna 12: erro léxico' $(BUILD_DIR)/test_invalid_number.out
+	grep -Fq 'encontrado token inválido "2D"' $(BUILD_DIR)/test_invalid_number.out
+
+test-sanitize:
+	ASAN_OPTIONS="$${ASAN_OPTIONS:+$$ASAN_OPTIONS:}halt_on_error=1:exitcode=99" \
+	UBSAN_OPTIONS="$${UBSAN_OPTIONS:+$$UBSAN_OPTIONS:}halt_on_error=1:exitcode=98" \
+	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" test
+
+test-parser-sanitize:
+	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" \
+		test-parser test-parser-integration test-parser-diagnostics test-parser-recovery
+
+test-symbol-sanitize:
+	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" test-symbol test-semantic-symbol
+
+$(BUILD_DIR)/symbol_bench: test/symbol_bench.c symbol/symbol.c $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) test/symbol_bench.c symbol/symbol.c $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+bench-symbol: $(BUILD_DIR)/symbol_bench
+	$<

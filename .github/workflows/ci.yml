@@ -1,0 +1,33 @@
+name: C contracts
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - name: Install compilers and re2c 4.1
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gcc clang libclang-rt-dev make re2c git ca-certificates
+      - uses: actions/checkout@v4
+      - name: Verify generated lexer
+        run: make -C src check-generated
+      - name: Run all contracts with warnings as errors
+        run: make -C src -j2 CC=${{ matrix.compiler }} CFLAGS='-std=c11 -O2 -Wall -Wextra -Wpedantic -Werror' test
+      - name: Address, undefined behavior and leak sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: make -C src -j2 CC=${{ matrix.compiler }} test-sanitize
