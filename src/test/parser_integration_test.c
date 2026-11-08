@@ -29,6 +29,26 @@ static void check(const char *name, const char *source, bool valid)
         tokens[count++] = lexer_next(&lexer);
     } while (tokens[count - 1].kind != TOK_EOF);
     ParseResult result = parser_parse(tokens, count);
+    ParserStream *stream = NULL;
+    if (parser_stream_create(&stream, NULL) != PARSE_OK) exit(EXIT_FAILURE);
+    for (size_t i = 0; i < count; ++i) {
+        ParserStep step = parser_stream_feed(stream, tokens[i]);
+        if (!step.consumed || step.flow == PARSER_PROTOCOL_ERROR) exit(EXIT_FAILURE);
+        if (valid && i + 1 < count &&
+            (step.flow != PARSER_NEED_TOKEN || parser_stream_result(stream)->status != PARSE_OK))
+            exit(EXIT_FAILURE);
+        if (step.flow != PARSER_NEED_TOKEN) break;
+    }
+    ParseResult incremental = parser_stream_finish(stream);
+    parser_stream_destroy(stream);
+    if (incremental.status != result.status || incremental.diagnostic_count != result.diagnostic_count)
+        exit(EXIT_FAILURE);
+    for (size_t i = 0; i < result.diagnostic_count; ++i) {
+        const ParseDiagnostic *a = &result.diagnostics[i], *b = &incremental.diagnostics[i];
+        if (a->status != b->status || a->token_index != b->token_index || a->found != b->found ||
+            a->line != b->line || a->column != b->column ||
+            memcmp(a->expected, b->expected, sizeof(a->expected)) != 0) exit(EXIT_FAILURE);
+    }
     if ((result.status == PARSE_OK) != valid) {
         fprintf(stderr, "Falha: %s (esperado %s)\n", name, valid ? "válido" : "inválido");
         exit(EXIT_FAILURE);

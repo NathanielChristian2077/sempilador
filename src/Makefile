@@ -10,15 +10,16 @@ RE2C ?= re2c
 RE2CFLAGS = --no-generation-date --no-version --no-debug-info -W -Werror
 
 LEXER = lexer/lexer.c
-PARSER = parser/parser.c
+PARSER = parser/parser.c parser/parser_stream.c parser/parser_stack.c \
+         parser/parser_recovery.c parser/generated/ll1_tables.c
 SEMANTIC = symbol/semantic.c type/type.c
 SOURCES = source/source.c token/token.c $(LEXER) $(PARSER) symbol/symbol.c $(SEMANTIC)
-HEADERS = $(wildcard source/*.h token/*.h lexer/*.h parser/*.h symbol/*.h type/*.h)
+HEADERS = $(wildcard source/*.h token/*.h lexer/*.h parser/*.h parser/generated/*.h symbol/*.h type/*.h)
 SANITIZER_FLAGS = -std=c11 -g -O1 -Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined -fno-omit-frame-pointer
 
 .PHONY: build run clean regen-lexer check-generated test test-source test-token \
         test-lexer test-lexer-contract test-parser test-parser-integration \
-        test-parser-diagnostics test-parser-recovery test-symbol test-type \
+        test-parser-diagnostics test-parser-recovery test-parser-stream test-symbol test-type \
         test-semantic-symbol test-build test-sanitize test-parser-sanitize \
         test-symbol-sanitize bench-symbol
 
@@ -50,7 +51,7 @@ clean:
 
 test: test-source test-token test-lexer test-lexer-contract test-parser \
       test-parser-integration test-parser-diagnostics test-parser-recovery \
-      test-symbol test-type test-semantic-symbol test-build
+      test-symbol test-type test-semantic-symbol test-build test-parser-stream test-parser-tables
 
 $(BUILD_DIR)/source_test: test/source_test.c source/source.c $(HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/source_test.c source/source.c $(LDFLAGS) $(LDLIBS) -o $@
@@ -124,7 +125,7 @@ test-sanitize:
 
 test-parser-sanitize:
 	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" \
-		test-parser test-parser-integration test-parser-diagnostics test-parser-recovery
+		test-parser test-parser-integration test-parser-diagnostics test-parser-recovery test-parser-stream
 
 test-symbol-sanitize:
 	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" test-symbol test-semantic-symbol
@@ -132,4 +133,25 @@ test-symbol-sanitize:
 $(BUILD_DIR)/symbol_bench: test/symbol_bench.c symbol/symbol.c $(LEXER) $(HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) test/symbol_bench.c symbol/symbol.c $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
 bench-symbol: $(BUILD_DIR)/symbol_bench
+	$<
+
+.PHONY: regen-parser check-parser-generated test-parser-generated test-parser-stream
+regen-parser:
+	python3 parser/tools/generate_ll1.py
+
+check-parser-generated:
+	python3 parser/tools/generate_ll1.py --check
+
+test-parser-generated: check-parser-generated
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s test -p 'parser_generation_test.py' -v
+
+$(BUILD_DIR)/parser_stream_test: test/parser_stream_test.c $(PARSER) $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/parser_stream_test.c $(PARSER) $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-parser-stream: $(BUILD_DIR)/parser_stream_test
+	$<
+
+.PHONY: test-parser-tables
+$(BUILD_DIR)/parser_table_test: test/parser_table_test.c parser/generated/ll1_tables.c $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/parser_table_test.c parser/generated/ll1_tables.c $(LDFLAGS) $(LDLIBS) -o $@
+test-parser-tables: $(BUILD_DIR)/parser_table_test
 	$<
