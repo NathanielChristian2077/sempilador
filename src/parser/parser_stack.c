@@ -1,4 +1,4 @@
-#include "parser_internal.h"
+#include "parser_ast_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -86,6 +86,7 @@ ParseStatus parser_stream_initialize(ParserStream *p, const ParserConfig *config
 
 void parser_stream_dispose(ParserStream *p)
 {
+    parser_ast_discard(p);
     if (p->stack != p->inline_stack) p->allocator.release(p->allocator.context, p->stack);
     if (p->contexts != p->inline_contexts) p->allocator.release(p->allocator.context, p->contexts);
 }

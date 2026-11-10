@@ -78,23 +78,29 @@ bool parse_main(Parser *p)
     return recognized;
 }
 
-ParseResult parser_parse(const Token *tokens, size_t count)
+bool parser_validate_tokens(const Token *tokens, size_t count, ParseResult *result)
 {
-    ParseResult result = {0};
     if (tokens == NULL || count == 0) {
-        parser_add_error(&result, PARSE_INVALID_INPUT, 0, NULL, 0);
-        return result;
+        parser_add_error(result, PARSE_INVALID_INPUT, 0, NULL, 0);
+        return false;
     }
     for (size_t i = 0; i < count; ++i) {
         if ((unsigned)tokens[i].kind > TOK_COMMENT || (tokens[i].kind == TOK_EOF && i != count - 1)) {
-            parser_add_error(&result, PARSE_INVALID_INPUT, i, &tokens[i], 0);
-            return result;
+            parser_add_error(result, PARSE_INVALID_INPUT, i, &tokens[i], 0);
+            return false;
         }
     }
     if (tokens[count - 1].kind != TOK_EOF) {
-        parser_add_error(&result, PARSE_INVALID_INPUT, count, NULL, TOKEN_BIT(TOK_EOF));
-        return result;
+        parser_add_error(result, PARSE_INVALID_INPUT, count, NULL, TOKEN_BIT(TOK_EOF));
+        return false;
     }
+    return true;
+}
+
+ParseResult parser_parse(const Token *tokens, size_t count)
+{
+    ParseResult result = {0};
+    if (!parser_validate_tokens(tokens, count, &result)) return result;
     ParserStream stream;
     parser_stream_initialize(&stream, NULL, LL1_NT_PROGRAMA, true);
     for (size_t i = 0; i < count && stream.flow == PARSER_NEED_TOKEN; ++i)

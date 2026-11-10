@@ -1,4 +1,4 @@
-#include "parser_internal.h"
+#include "parser_ast_internal.h"
 
 /* Nullable tails defer missing-delimiter diagnostics to their continuation. */
 static bool transparent(LL1Nonterminal n)
@@ -52,6 +52,7 @@ static LL1Symbol recovery_boundary(ParserStream *p, TokenKind found)
 
 static bool expand(ParserStream *p, LL1Nonterminal n, LL1ProductionId id, const Token *token)
 {
+    if (!parser_ast_expand(p, id)) return false;
     LL1Production rule = ll1_productions[id];
     bool declaration = n == LL1_NT_LISTAVARIAVEIS && rule.rhs_length != 0;
     bool context = declaration || n == LL1_NT_COMANDO || n == LL1_NT_DECFUNCAO;
@@ -93,6 +94,7 @@ void parser_process_token(ParserStream *p, Token token)
                 continue;
             }
         } else if (top == token.kind) {
+            if (!parser_ast_token(p, token)) return;
             --p->size;
             parser_track(p, token.kind);
             while (p->size && p->stack[p->size - 1] == PARSER_CONTEXT_END) {
@@ -102,6 +104,7 @@ void parser_process_token(ParserStream *p, Token token)
             if (p->size == 0) p->flow = PARSER_FINISHED;
             return;
         }
+        parser_ast_discard(p);
         parser_add_error(&p->result, PARSE_SYNTAX_ERROR, p->index, &token, expected(p, token.kind));
         if (p->result.limit_reached) { p->flow = PARSER_STOPPED; return; }
         if (!parser_begin_recovery(p, &token, recovery_boundary(p, token.kind))) {
@@ -131,6 +134,7 @@ ParserStep parser_stream_feed(ParserStream *p, Token token)
     } else if (token.kind != TOK_COMMENT) {
         parser_process_token(p, token);
     }
+    if (p->result.status != PARSE_OK) parser_ast_discard(p);
     if (p->next_index != SIZE_MAX) ++p->next_index;
     return (ParserStep){p->flow, true};
 }
@@ -151,5 +155,6 @@ ParseResult parser_stream_finish(ParserStream *p)
         parser_add_error(&p->result, PARSE_INVALID_INPUT, p->next_index, NULL, TOKEN_BIT(TOK_EOF));
         p->flow = PARSER_STOPPED;
     }
+    if (p->result.status != PARSE_OK) parser_ast_discard(p);
     return p->result;
 }

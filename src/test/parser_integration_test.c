@@ -1,4 +1,4 @@
-#include "../parser/parser.h"
+#include "../parser/ast.h"
 #include "../lexer/lexer.h"
 
 #include <stdio.h>
@@ -49,6 +49,28 @@ static void check(const char *name, const char *source, bool valid)
             a->line != b->line || a->column != b->column ||
             memcmp(a->expected, b->expected, sizeof(a->expected)) != 0) exit(EXIT_FAILURE);
     }
+    Ast *ast = NULL;
+    ParseResult with_ast = parser_parse_ast(tokens, count, 0, &ast);
+    if ((ast != NULL) != valid || with_ast.status != result.status ||
+        with_ast.diagnostic_count != result.diagnostic_count) exit(EXIT_FAILURE);
+    ast_destroy(ast);
+    if (parser_stream_create_ast(&stream, NULL, 0) != PARSE_OK) exit(EXIT_FAILURE);
+    for (size_t i = 0; i < count; ++i) {
+        ParserStep step = parser_stream_feed(stream, tokens[i]);
+        if (step.flow != PARSER_NEED_TOKEN) break;
+    }
+    ast = parser_stream_take_ast(stream);
+    with_ast = parser_stream_finish(stream);
+    if ((ast != NULL) != valid || with_ast.status != result.status ||
+        with_ast.diagnostic_count != result.diagnostic_count) exit(EXIT_FAILURE);
+    for (size_t i = 0; i < result.diagnostic_count; ++i) {
+        const ParseDiagnostic *a = &result.diagnostics[i], *b = &with_ast.diagnostics[i];
+        if (a->status != b->status || a->token_index != b->token_index ||
+            a->found != b->found || a->line != b->line || a->column != b->column ||
+            memcmp(a->expected, b->expected, sizeof(a->expected)) != 0) exit(EXIT_FAILURE);
+    }
+    parser_stream_destroy(stream);
+    ast_destroy(ast);
     if ((result.status == PARSE_OK) != valid) {
         fprintf(stderr, "Falha: %s (esperado %s)\n", name, valid ? "válido" : "inválido");
         exit(EXIT_FAILURE);
@@ -78,6 +100,9 @@ static void check(const char *name, const char *source, bool valid)
             Token saved = tokens[n];
             tokens[n] = (Token){ .kind = TOK_EOF };
             bool accepted = parser_parse(tokens, n + 1).status == PARSE_OK;
+            Ast *partial = NULL;
+            ParseResult truncated = parser_parse_ast(tokens, n + 1, 0, &partial);
+            if (partial || truncated.status == PARSE_OK) exit(EXIT_FAILURE);
             tokens[n] = saved;
             if (accepted) {
                 fprintf(stderr, "Prefixo inválido aceito: %s, token %zu\n", name, n);

@@ -11,7 +11,8 @@ RE2CFLAGS = --no-generation-date --no-version --no-debug-info -W -Werror
 
 LEXER = lexer/lexer.c
 PARSER = parser/parser.c parser/parser_stream.c parser/parser_stack.c \
-         parser/parser_recovery.c parser/generated/ll1_tables.c
+         parser/parser_recovery.c parser/generated/ll1_tables.c \
+         parser/ast.c parser/parser_ast.c
 SEMANTIC = symbol/semantic.c type/type.c
 SOURCES = source/source.c token/token.c $(LEXER) $(PARSER) symbol/symbol.c $(SEMANTIC)
 HEADERS = $(wildcard source/*.h token/*.h lexer/*.h parser/*.h parser/generated/*.h symbol/*.h type/*.h)
@@ -125,7 +126,7 @@ test-sanitize:
 
 test-parser-sanitize:
 	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" \
-		test-parser test-parser-integration test-parser-diagnostics test-parser-recovery test-parser-stream
+		test-parser test-parser-integration test-parser-diagnostics test-parser-recovery test-parser-stream test-ast test-ast-resource
 
 test-symbol-sanitize:
 	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" test-symbol test-semantic-symbol
@@ -154,4 +155,18 @@ test-parser-stream: $(BUILD_DIR)/parser_stream_test
 $(BUILD_DIR)/parser_table_test: test/parser_table_test.c parser/generated/ll1_tables.c $(HEADERS) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/parser_table_test.c parser/generated/ll1_tables.c $(LDFLAGS) $(LDLIBS) -o $@
 test-parser-tables: $(BUILD_DIR)/parser_table_test
+	$<
+
+.PHONY: test-ast
+test: test-ast
+$(BUILD_DIR)/ast_test: test/ast_test.c $(PARSER) $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/ast_test.c $(PARSER) $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-ast: $(BUILD_DIR)/ast_test
+	$<
+
+.PHONY: test-ast-resource
+test: test-ast-resource
+$(BUILD_DIR)/ast_resource_test: test/ast_resource_test.c $(PARSER) $(LEXER) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/ast_resource_test.c $(PARSER) $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
+test-ast-resource: $(BUILD_DIR)/ast_resource_test
 	$<

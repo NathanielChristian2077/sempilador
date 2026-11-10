@@ -19,7 +19,10 @@ typedef struct {
 } ParserContext;
 typedef enum { RECOVERY_NONE, RECOVERY_SKIP, RECOVERY_ID, RECOVERY_ELSE } RecoveryMode;
 
+struct AstBuilder;
+
 struct ParserStream {
+    struct AstBuilder *ast_builder;
     ParseResult result;
     ParserAllocator allocator;
     LL1Symbol *stack;
@@ -37,6 +40,7 @@ struct ParserStream {
     ParserFlow flow;
 };
 
+bool parser_validate_tokens(const Token *tokens, size_t count, ParseResult *result);
 void parser_add_error(ParseResult *result, ParseStatus status, size_t index,
                       const Token *token, uint64_t expected);
 ParseStatus parser_stream_initialize(ParserStream *p, const ParserConfig *config,
