@@ -170,3 +170,21 @@ $(BUILD_DIR)/ast_resource_test: test/ast_resource_test.c $(PARSER) $(LEXER) $(HE
 	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/ast_resource_test.c $(PARSER) $(LEXER) $(LDFLAGS) $(LDLIBS) -o $@
 test-ast-resource: $(BUILD_DIR)/ast_resource_test
 	$<
+
+SEMANTIC_ANALYSIS = semantic/semantic_model.c semantic/semantic_check.c semantic/semantic_constants.c
+SEMANTIC_HEADERS = $(wildcard semantic/*.h)
+.PHONY: test-semantic-analysis
+test: test-semantic-analysis
+$(BUILD_DIR)/semantic_analysis_test: test/semantic_analysis_test.c $(SEMANTIC_ANALYSIS) $(SEMANTIC_HEADERS) $(PARSER) $(LEXER) $(SEMANTIC) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/semantic_analysis_test.c $(SEMANTIC_ANALYSIS) $(PARSER) $(LEXER) $(SEMANTIC) $(LDFLAGS) $(LDLIBS) -lm -o $@
+test-semantic-analysis: $(BUILD_DIR)/semantic_analysis_test
+	$<
+
+.PHONY: test-semantic-resources test-semantic-sanitize
+test: test-semantic-resources
+$(BUILD_DIR)/semantic_resource_test: test/semantic_resource_test.c $(SEMANTIC_ANALYSIS) $(SEMANTIC_HEADERS) $(PARSER) $(LEXER) $(SEMANTIC) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/semantic_resource_test.c $(SEMANTIC_ANALYSIS) $(PARSER) $(LEXER) $(SEMANTIC) $(LDFLAGS) $(LDLIBS) -lm -o $@
+test-semantic-resources: $(BUILD_DIR)/semantic_resource_test
+	$<
+test-semantic-sanitize:
+	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" test-semantic-analysis test-semantic-resources
