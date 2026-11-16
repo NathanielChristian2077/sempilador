@@ -1,9 +1,7 @@
 # Etapa 2: contratos de léxico, tipos e símbolos
 
-Este incremento entrega o lexer em re2c e uma infraestrutura semântica testável
-antes da integração com a AST. Não implementa ainda o percurso semântico da
-pessoa 2 nem a geração LLVM da pessoa 3. O executável continua executando a
-análise léxica e sintática da etapa 1.
+O lexer utiliza re2c. Os módulos de tipos e símbolos fornecem os contratos
+consumidos pela análise semântica e pela geração LLVM.
 
 ## Compilar e verificar
 
@@ -17,9 +15,10 @@ make -C src test-sanitize
 - C11, GCC ou Clang e GNU Make são necessários.
 - `lexer/lexer.re` é a fonte canônica; `lexer/lexer.c` é gerado e versionado.
 - re2c **4.1** gera a versão conferida no CI, sem data, versão ou diretivas de
-  caminho. `make -C src regen-lexer` regenera o arquivo. Se alterar o `.re`, a
-  compilação também exige re2c para regenerar o `.c`.
-- A compilação pode usar o `.c` versionado sem re2c quando ele está atualizado.
+  caminho. Após alterar o `.re`, executar `make -C src regen-lexer` e versionar
+  o `.c` atualizado.
+- O build utiliza o `.c` versionado sem re2c, independentemente dos timestamps.
+  A consistência é verificada por `check-generated` no CI.
 - Use `RE2C=/caminho/re2c` para uma instalação local e `CC=clang` para trocar o
   compilador. Use um `BUILD_DIR` diferente ao trocar flags ou compilador: o Make
   não detecta alterações nas flags de uma compilação anterior.
@@ -82,10 +81,9 @@ parser atual aceita ambos. Isso não amplia a gramática existente neste increme
   retorna o comprimento necessário ou `SIZE_MAX` para argumentos inválidos.
 
 `void` só é válido como escalar e não tem tamanho de armazenamento. A categoria
-léxica `TEXTO` não introduz um tipo declarativo `string` nesta API. A pessoa 2
-deve decidir a tipagem de expressões e literais segundo as regras da linguagem.
-Ao converter dimensões dos tokens para `size_t`, a pessoa 2 deve verificar todos
-os dígitos e overflow, sem depender de conversões que aceitam prefixos.
+léxica `TEXTO` não introduz um tipo declarativo `string` nesta API. A análise
+semântica verifica os tipos de expressões e a conversão integral das dimensões,
+incluindo overflow.
 
 ## Símbolos: `symbol/semantic.h`
 
@@ -130,27 +128,20 @@ nomes dos parâmetros no escopo da função com `SYMBOL_PARAMETER`.
 
 Não há sobrecarga: qualquer declaração com mesmo nome no mesmo escopo retorna
 `SYMBOL_DUPLICATE` e o ID anterior. Escopos distintos permitem nomes iguais.
-Cabe ao percurso semântico impor restrições adicionais de sombreamento e decidir
-se parâmetros e variáveis do corpo externo compartilham um escopo. Use um único
-escopo se a regra for rejeitar a redeclaração de um parâmetro no corpo da função.
+A análise semântica utiliza o mesmo escopo para parâmetros e variáveis do corpo
+externo da função; blocos internos permitem sombreamento.
 
 Uma falha de alocação não insere declaração parcial nem invalida IDs anteriores;
 a capacidade interna pode crescer durante uma operação que depois falha. Falhas
 distintas retornam `SYMBOL_INVALID` ou `SYMBOL_NO_MEMORY`. Inicialize uma tabela
 nova e libere uma tabela viva antes de reinicializá-la. Tabelas não são thread-safe.
 
-## Integração que falta
+## Integração
 
-Pessoa 2: construir AST, cadastrar assinaturas na ordem/política permitida,
-abrir/fechar escopos, declarar variáveis/parâmetros, vincular cada uso a um
-`SymbolId` e verificar operações, atribuições, condições, chamadas e retornos.
-O registro das assinaturas antes de visitar corpos permite recursão e chamadas
-adiantadas, mas a política de linguagem precisa autorizar essas chamadas.
-
-Pessoa 3: consumir os tipos e IDs resolvidos; manter seu próprio mapeamento de
-`SymbolId` para valores/endereços LLVM. Não há endereço físico, deslocamento de
-frame ou objeto LLVM nos símbolos deste incremento. A tabela deve continuar
-viva durante essa geração.
+A análise semântica cadastra assinaturas antes dos corpos, resolve os usos por
+`SymbolId` e verifica os tipos. O gerador LLVM consome esse modelo e mantém seu
+próprio mapeamento de símbolos para endereços. O modelo e a AST devem permanecer
+vivos durante a geração.
 
 ## Evidência dos testes
 

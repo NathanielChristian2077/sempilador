@@ -1,0 +1,3 @@
+# Generated files must retain their exact bytes on every platform.
+src/lexer/lexer.c -text
+src/parser/generated/* -text
