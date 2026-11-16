@@ -1,0 +1,53 @@
+produção,first,follow,regra
+TIPOBASE,char | float | int | boolean,id | [,TIPOBASE → char | float | int | boolean
+SINAL,+ | - | ε,id | num_int | num_dec,SINAL → + | - | ε
+CONSTANTE,num_int | num_dec,"+ | - | , | ; | ) | ] | comp | && | || | * | / | %",CONSTANTE → num_int | num_dec
+DIMENSÃO,[ | ε,id,DIMENSÃO → [ num_int ] DIMENSÃO | ε
+PRINCIPAL,main,$,PRINCIPAL → main ( ) BLOCO
+BLOCO,{,char | float | int | boolean | id | main | scanf | println | if | else | } | func | while | return | void | for | $,BLOCO → { LISTAVARIÁVEIS COMANDOS }
+LISTAID,", | ε",;,"LISTAID → , id LISTAID | ε"
+LEITURA,scanf,id | scanf | println | if | } | func | while | return | for,LEITURA → scanf ( TERMOLEITURA NOVOTERMOLEITURA ) ;
+TERMOLEITURA,id,", | )",TERMOLEITURA → id DIMENSAO2
+ESCRITA,println,id | scanf | println | if | } | func | while | return | for,ESCRITA → println ( TERMOESCRITA NOVOTERMOESCRITA ) ;
+DIMENSAO2,[ | ε,"+ | - | , | ; | ) | ] | comp | && | || | * | / | %",DIMENSAO2 → [ EXPR_ADITIVA ] DIMENSAO2 | ε
+TERMOESCRITA,id | num_int | num_dec | texto,", | )",TERMOESCRITA → id DIMENSAO2 | CONSTANTE | texto
+SELEÇÃO,if,id | scanf | println | if | } | func | while | return | for,SELEÇÃO → if ( EXPRESSÃO ) BLOCO SENÃO
+SENÃO,else | ε,id | scanf | println | if | } | func | while | return | for,SENÃO → else BLOCO | ε
+ENQUANTO,while,id | scanf | println | if | } | func | while | return | for,ENQUANTO → while ( EXPRESSÃO ) BLOCO
+ATRIBUIÇÃO,id,id | scanf | println | if | } | func | while | return | for,ATRIBUIÇÃO → id = COMPLEMENTO ;
+FUNÇÃO,func,id | ; | scanf | println | if | } | func | while | return | for,FUNÇÃO → func id ( ARGUMENTOS )
+RETORNO,return,id | scanf | println | if | } | func | while | return | for,RETORNO → return EXPRESSÃO ;
+EXPR_E2,&& | ε,", | ; | ) | ||",EXPR_E2 → && EXPR_RELACIONAL EXPR_E2 | ε
+EXPR_RELACIONAL2,comp | ε,", | ; | ) | && | ||",EXPR_RELACIONAL2 → comp EXPR_ADITIVA | ε
+OP_ADITIVO,+ | -,+ | - | id | num_int | num_dec | texto | ! | (,OP_ADITIVO → + | -
+OP_MULTIPLICATIVO,* | / | %,+ | - | id | num_int | num_dec | texto | ! | (,OP_MULTIPLICATIVO → * | / | %
+TERMO,id | num_int | num_dec,"+ | - | , | ; | ) | ] | comp | && | || | * | / | %",TERMO → id DIMENSAO2 | CONSTANTE
+LISTAPARAMETROS,", | ε",),"LISTAPARAMETROS → , TIPO id LISTAPARAMETROS | ε"
+NOVOTERMOLEITURA,", | ε",),"NOVOTERMOLEITURA → , TERMOLEITURA NOVOTERMOLEITURA | ε"
+NOVOTERMOESCRITA,", | ε",),"NOVOTERMOESCRITA → , TERMOESCRITA NOVOTERMOESCRITA | ε"
+NOVO_ARGUMENTO,", | ε",),"NOVO_ARGUMENTO → , EXPRESSÃO NOVO_ARGUMENTO | ε"
+EXPR_OU2,|| | ε,", | ; | )",EXPR_OU2 → || EXPR_E EXPR_OU2 | ε
+FATOR,+ | - | id | num_int | num_dec | texto | ! | (,"+ | - | , | ; | ) | ] | comp | && | || | * | / | %",FATOR → SINAL TERMO | texto | ! FATOR | ( EXPRESSÃO )
+TIPO,char | float | int | boolean,id,TIPO → TIPOBASE DIMENSÃO
+TIPORETORNO,char | float | int | boolean | void,id,TIPORETORNO → TIPO | void
+LISTAVARIÁVEIS,char | float | int | boolean | ε,id | scanf | println | if | } | func | while | return | for,LISTAVARIÁVEIS → TIPO id LISTAID ; LISTAVARIÁVEIS | ε
+PARÂMETROS,char | float | int | boolean | ε,),PARÂMETROS → TIPO id LISTAPARAMETROS | ε
+DECFUNÇÃO,char | float | int | boolean | void,char | float | int | boolean | main | void,DECFUNÇÃO → TIPORETORNO id ( PARÂMETROS ) BLOCO
+LISTAFUNÇÕES,char | float | int | boolean | void | ε,main,LISTAFUNÇÕES → DECFUNÇÃO LISTAFUNÇÕES | ε
+PROGRAMA,char | float | int | boolean | main | void,$,PROGRAMA → LISTAFUNÇÕES PRINCIPAL
+EXPR_MULTIPLICATIVA2,* | / | % | ε,"+ | - | , | ; | ) | ] | comp | && | ||",EXPR_MULTIPLICATIVA2 → OP_MULTIPLICATIVO FATOR EXPR_MULTIPLICATIVA2 | ε
+EXPR_MULTIPLICATIVA,+ | - | id | num_int | num_dec | texto | ! | (,"+ | - | , | ; | ) | ] | comp | && | ||",EXPR_MULTIPLICATIVA → FATOR EXPR_MULTIPLICATIVA2
+EXPR_ADITIVA2,+ | - | ε,", | ; | ) | ] | comp | && | ||",EXPR_ADITIVA2 → OP_ADITIVO EXPR_MULTIPLICATIVA EXPR_ADITIVA2 | ε
+EXPR_ADITIVA,+ | - | id | num_int | num_dec | texto | ! | (,", | ; | ) | ] | comp | && | ||",EXPR_ADITIVA → EXPR_MULTIPLICATIVA EXPR_ADITIVA2
+EXPR_RELACIONAL,+ | - | id | num_int | num_dec | texto | ! | (,", | ; | ) | && | ||",EXPR_RELACIONAL → EXPR_ADITIVA EXPR_RELACIONAL2
+EXPR_E,+ | - | id | num_int | num_dec | texto | ! | (,", | ; | ) | ||",EXPR_E → EXPR_RELACIONAL EXPR_E2
+EXPR_OU,+ | - | id | num_int | num_dec | texto | ! | (,", | ; | )",EXPR_OU → EXPR_E EXPR_OU2
+EXPRESSÃO,+ | - | id | num_int | num_dec | texto | ! | (,", | ; | )",EXPRESSÃO → EXPR_OU
+ARGUMENTOS,+ | - | id | num_int | num_dec | texto | ! | ( | ε,),ARGUMENTOS → EXPRESSÃO NOVO_ARGUMENTO | ε
+COMPLEMENTO,+ | - | id | num_int | num_dec | texto | func | ! | (,;,COMPLEMENTO → EXPRESSÃO | FUNÇÃO
+COMANDO,id | scanf | println | if | func | while | return | for,id | scanf | println | if | } | func | while | return | for,COMANDO → LEITURA | ESCRITA | ATRIBUIÇÃO | FUNÇÃO | SELEÇÃO | ENQUANTO | RETORNO | PARA
+COMANDOS,id | scanf | println | if | func | while | return | for | ε,},COMANDOS → COMANDO COMANDOS | ε
+PARA,for,id | scanf | println | if | } | func | while | return | for,PARA → for ( INICIALIZACAO_FOR ; CONDICAO_FOR ; ATUALIZACAO_FOR ) BLOCO
+INICIALIZACAO_FOR,id | ε,;,INICIALIZACAO_FOR → id = EXPRESSÃO | ε
+CONDICAO_FOR,+ | - | id | num_int | num_dec | texto | ! | ( | ε,;,CONDICAO_FOR → EXPRESSÃO | ε
+ATUALIZACAO_FOR,id | ε,),ATUALIZACAO_FOR → id = EXPRESSÃO | ε

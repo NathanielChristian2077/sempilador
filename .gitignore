@@ -56,3 +56,9 @@ dkms.conf
 
 # Build output
 src/bin/
+
+# LLVM IR written next to the sources by the CLI
+*.ll
+
+# Expected outputs of the codegen tests (not executables)
+!src/test/codegen/*.out

@@ -89,7 +89,6 @@ int main(void)
         TOK_FOR,
         TOK_NUM_INT,
         TOK_NUM_DEC,
-        TOK_NUM_INT,
         TOK_INVALID,
         TOK_INVALID,
         TOK_INVALID,

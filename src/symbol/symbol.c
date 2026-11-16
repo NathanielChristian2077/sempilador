@@ -155,9 +155,9 @@ void symbol_table_print(const SymbolTable *table, FILE *stream)
 {
     if (table == NULL || stream == NULL)
         return;
-    fprintf(stream, "Tabela de símbolos (%zu identificadores)\n", table->count);
+    fprintf(stream, "Tabela de simbolos (%zu identificadores)\n", table->count);
     fprintf(stream, "%5s  %-24s %6s %6s %12s\n",
-            "#", "lexema", "linha", "coluna", "ocorrências");
+            "#", "lexema", "linha", "coluna", "ocorrencias");
     for (size_t i = 0; i < table->count; ++i) {
         const Symbol *symbol = &table->symbols[i];
         fprintf(stream, "%5zu  %-24s %6" PRIu32 " %6" PRIu32 " %12zu\n",

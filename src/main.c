@@ -3,17 +3,19 @@
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "symbol/symbol.h"
+#include "codegen/codegen.h"
 
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static const char *const token_spelling[] = {
     [TOK_EOF]       = "fim de arquivo",
-    [TOK_INVALID]   = "token inválido",
+    [TOK_INVALID]   = "token invalido",
     [TOK_ID]        = "identificador",
-    [TOK_NUM_INT]   = "número inteiro",
-    [TOK_NUM_DEC]   = "número decimal",
+    [TOK_NUM_INT]   = "numero inteiro",
+    [TOK_NUM_DEC]   = "numero decimal",
     [TOK_TEXTO]     = "texto",
     [TOK_INT]       = "'int'",
     [TOK_FLOAT]     = "'float'",
@@ -47,7 +49,7 @@ static const char *const token_spelling[] = {
     [TOK_RBRACE]    = "'}'",
     [TOK_COMMA]     = "','",
     [TOK_SEMICOLON] = "';'",
-    [TOK_COMMENT]   = "comentário"
+    [TOK_COMMENT]   = "comentario"
 };
 
 /* Collect tokens up to EOF, keeping invalid ones for the parser. */
@@ -93,11 +95,11 @@ static void print_diagnostic(const ParseDiagnostic *error, const Token *tokens,
     if (error->has_location)
         fprintf(stream, "Linha %" PRIu32 ", coluna %" PRIu32 ": ", error->line, error->column);
     if (error->status == PARSE_INVALID_INPUT) {
-        fprintf(stream, "entrada inválida para o parser.\n");
+        fprintf(stream, "entrada invalida para o parser.\n");
         return;
     }
     if (error->status == PARSE_LEXICAL_ERROR) {
-        fprintf(stream, "erro léxico");
+        fprintf(stream, "erro lexico");
     } else {
         fprintf(stream, "esperado ");
         bool first = true;
@@ -126,27 +128,94 @@ static void print_result(const ParseResult *result, const Token *tokens,
                          size_t count, FILE *stream)
 {
     if (result->status == PARSE_OK) {
-        fprintf(stream, "Análise sintática: programa válido.\n");
+        fprintf(stream, "Analise sintatica: programa valido.\n");
         return;
     }
-    fprintf(stream, "Análise sintática: %zu erro(s).\n", result->diagnostic_count);
+    fprintf(stream, "Analise sintatica: %zu erro(s).\n", result->diagnostic_count);
     for (size_t i = 0; i < result->diagnostic_count; ++i)
         print_diagnostic(&result->diagnostics[i], tokens, count, stream);
     if (result->limit_reached)
-        fprintf(stream, "Limite de %d diagnósticos atingido.\n", PARSE_MAX_DIAGNOSTICS);
+        fprintf(stream, "Limite de %d diagnosticos atingido.\n", PARSE_MAX_DIAGNOSTICS);
+}
+
+static void print_semantic(const SemanticResult *result, FILE *stream)
+{
+    if (result->status == SEMANTIC_OK) {
+        fprintf(stream, "Analise semantica: programa valido.\n");
+        return;
+    }
+    fprintf(stream, "Analise semantica: %zu erro(s).\n", result->diagnostic_count);
+    for (size_t i = 0; i < result->diagnostic_count; ++i) {
+        const SemanticDiagnostic *error = &result->diagnostics[i];
+        if (error->span.line > 0)
+            fprintf(stream, "Linha %" PRIu32 ", coluna %" PRIu32 ": ", error->span.line,
+                    error->span.column);
+        fprintf(stream, "%s.\n", semantic_diagnostic_message(error->code));
+    }
+    if (result->limit_reached)
+        fprintf(stream, "Limite de %d diagnosticos atingido.\n", SEMANTIC_MAX_DIAGNOSTICS);
+}
+
+/* The .ll goes next to the input: replace its extension, or append one. */
+static char *default_output(const char *input)
+{
+    size_t stem = strlen(input);
+    for (size_t i = stem; i > 0; --i) {
+        if (input[i - 1] == '/' || input[i - 1] == '\\')
+            break;
+        if (input[i - 1] == '.') {
+            stem = i - 1;
+            break;
+        }
+    }
+    char *path = malloc(stem + sizeof(".ll"));
+    if (path != NULL) {
+        memcpy(path, input, stem);
+        memcpy(path + stem, ".ll", sizeof(".ll"));
+    }
+    return path;
+}
+
+/* Build the AST, check it and write LLVM IR when the program is valid. */
+static bool generate(const Token *tokens, size_t count, const char *output)
+{
+    Ast *ast = NULL;
+    ParseResult parsed = parser_parse_ast(tokens, count, 0, &ast);
+    if (parsed.status != PARSE_OK || ast == NULL) {
+        fprintf(stderr, "Nao foi possivel construir a AST.\n");
+        ast_destroy(ast);
+        return false;
+    }
+    SemanticModel *model = NULL;
+    SemanticResult result = semantic_analyze(ast, NULL, &model);
+    print_semantic(&result, stdout);
+    bool valid = semantic_model_valid(model);
+    if (valid) {
+        FILE *out = fopen(output, "wb");
+        valid = out != NULL && codegen_emit(ast, model, out);
+        if (out != NULL && fclose(out) != 0)
+            valid = false;
+        if (valid)
+            printf("Codigo LLVM gerado em %s\n", output);
+        else
+            fprintf(stderr, "Nao foi possivel gravar '%s'.\n", output);
+    }
+    semantic_model_destroy(model);
+    ast_destroy(ast);
+    return valid;
 }
 
 int main(int argc, char **argv)
 {
-    if (argc != 2) {
-        fprintf(stderr, "uso: %s <arquivo>\n", argv[0]);
+    if (argc != 2 && argc != 3) {
+        fprintf(stderr, "uso: %s <arquivo> [saida.ll]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
     SourceBuffer source;
     SourceResult loaded = source_load(argv[1], &source);
     if (loaded != SOURCE_OK) {
-        fprintf(stderr, "Não foi possível ler '%s' (código %d).\n", argv[1], loaded);
+        fprintf(stderr, "Nao foi possivel ler '%s' (codigo %d).\n", argv[1], loaded);
         return EXIT_FAILURE;
     }
 
@@ -154,7 +223,7 @@ int main(int argc, char **argv)
     Token *tokens = lex_all(&source, &count);
     SymbolTable table;
     if (tokens == NULL || !symbol_table_init(&table)) {
-        fprintf(stderr, "Memória insuficiente.\n");
+        fprintf(stderr, "Memoria insuficiente.\n");
         free(tokens);
         source_free(&source);
         return EXIT_FAILURE;
@@ -162,7 +231,7 @@ int main(int argc, char **argv)
 
     int status = EXIT_FAILURE;
     if (!symbol_table_add_tokens(&table, tokens, count)) {
-        fprintf(stderr, "Memória insuficiente.\n");
+        fprintf(stderr, "Memoria insuficiente.\n");
     } else {
         print_tokens(tokens, count, stdout);
         putchar('\n');
@@ -170,8 +239,15 @@ int main(int argc, char **argv)
         putchar('\n');
         ParseResult result = parser_parse(tokens, count);
         print_result(&result, tokens, count, stdout);
-        if (result.status == PARSE_OK)
-            status = EXIT_SUCCESS;
+        if (result.status == PARSE_OK) {
+            char *output = argc == 3 ? argv[2] : default_output(argv[1]);
+            if (output == NULL)
+                fprintf(stderr, "Memoria insuficiente.\n");
+            else if (generate(tokens, count, output))
+                status = EXIT_SUCCESS;
+            if (output != argv[2])
+                free(output);
+        }
     }
 
     symbol_table_free(&table);

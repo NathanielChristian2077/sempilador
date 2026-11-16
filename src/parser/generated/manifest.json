@@ -1,0 +1,848 @@
+{
+  "schema": 1,
+  "grammar_sha256": "3ae35a89cd1f728be323d2937f07f5788f132d077759e8c2abd44bc7f35c84c2",
+  "nonterminals": 52,
+  "grammar_terminals": 37,
+  "token_kinds": 39,
+  "productions": 97,
+  "filled_cells": 253,
+  "rhs_symbols": 176,
+  "nullable_nonterminals": 22,
+  "dense_uint16_bytes": 4056,
+  "reference_verified": false,
+  "production_catalog": [
+    {
+      "id": 1,
+      "lhs": "TIPOBASE",
+      "rhs": [
+        "char"
+      ],
+      "key": "TIPOBASE → char"
+    },
+    {
+      "id": 2,
+      "lhs": "TIPOBASE",
+      "rhs": [
+        "float"
+      ],
+      "key": "TIPOBASE → float"
+    },
+    {
+      "id": 3,
+      "lhs": "TIPOBASE",
+      "rhs": [
+        "int"
+      ],
+      "key": "TIPOBASE → int"
+    },
+    {
+      "id": 4,
+      "lhs": "TIPOBASE",
+      "rhs": [
+        "boolean"
+      ],
+      "key": "TIPOBASE → boolean"
+    },
+    {
+      "id": 5,
+      "lhs": "SINAL",
+      "rhs": [
+        "+"
+      ],
+      "key": "SINAL → +"
+    },
+    {
+      "id": 6,
+      "lhs": "SINAL",
+      "rhs": [
+        "-"
+      ],
+      "key": "SINAL → -"
+    },
+    {
+      "id": 7,
+      "lhs": "SINAL",
+      "rhs": [],
+      "key": "SINAL → ε"
+    },
+    {
+      "id": 8,
+      "lhs": "CONSTANTE",
+      "rhs": [
+        "num_int"
+      ],
+      "key": "CONSTANTE → num_int"
+    },
+    {
+      "id": 9,
+      "lhs": "CONSTANTE",
+      "rhs": [
+        "num_dec"
+      ],
+      "key": "CONSTANTE → num_dec"
+    },
+    {
+      "id": 10,
+      "lhs": "DIMENSÃO",
+      "rhs": [
+        "[",
+        "num_int",
+        "]",
+        "DIMENSÃO"
+      ],
+      "key": "DIMENSÃO → [ num_int ] DIMENSÃO"
+    },
+    {
+      "id": 11,
+      "lhs": "DIMENSÃO",
+      "rhs": [],
+      "key": "DIMENSÃO → ε"
+    },
+    {
+      "id": 12,
+      "lhs": "PRINCIPAL",
+      "rhs": [
+        "main",
+        "(",
+        ")",
+        "BLOCO"
+      ],
+      "key": "PRINCIPAL → main ( ) BLOCO"
+    },
+    {
+      "id": 13,
+      "lhs": "BLOCO",
+      "rhs": [
+        "{",
+        "LISTAVARIÁVEIS",
+        "COMANDOS",
+        "}"
+      ],
+      "key": "BLOCO → { LISTAVARIÁVEIS COMANDOS }"
+    },
+    {
+      "id": 14,
+      "lhs": "LISTAID",
+      "rhs": [
+        ",",
+        "id",
+        "LISTAID"
+      ],
+      "key": "LISTAID → , id LISTAID"
+    },
+    {
+      "id": 15,
+      "lhs": "LISTAID",
+      "rhs": [],
+      "key": "LISTAID → ε"
+    },
+    {
+      "id": 16,
+      "lhs": "LEITURA",
+      "rhs": [
+        "scanf",
+        "(",
+        "TERMOLEITURA",
+        "NOVOTERMOLEITURA",
+        ")",
+        ";"
+      ],
+      "key": "LEITURA → scanf ( TERMOLEITURA NOVOTERMOLEITURA ) ;"
+    },
+    {
+      "id": 17,
+      "lhs": "TERMOLEITURA",
+      "rhs": [
+        "id",
+        "DIMENSAO2"
+      ],
+      "key": "TERMOLEITURA → id DIMENSAO2"
+    },
+    {
+      "id": 18,
+      "lhs": "ESCRITA",
+      "rhs": [
+        "println",
+        "(",
+        "TERMOESCRITA",
+        "NOVOTERMOESCRITA",
+        ")",
+        ";"
+      ],
+      "key": "ESCRITA → println ( TERMOESCRITA NOVOTERMOESCRITA ) ;"
+    },
+    {
+      "id": 19,
+      "lhs": "DIMENSAO2",
+      "rhs": [
+        "[",
+        "EXPR_ADITIVA",
+        "]",
+        "DIMENSAO2"
+      ],
+      "key": "DIMENSAO2 → [ EXPR_ADITIVA ] DIMENSAO2"
+    },
+    {
+      "id": 20,
+      "lhs": "DIMENSAO2",
+      "rhs": [],
+      "key": "DIMENSAO2 → ε"
+    },
+    {
+      "id": 21,
+      "lhs": "TERMOESCRITA",
+      "rhs": [
+        "id",
+        "DIMENSAO2"
+      ],
+      "key": "TERMOESCRITA → id DIMENSAO2"
+    },
+    {
+      "id": 22,
+      "lhs": "TERMOESCRITA",
+      "rhs": [
+        "CONSTANTE"
+      ],
+      "key": "TERMOESCRITA → CONSTANTE"
+    },
+    {
+      "id": 23,
+      "lhs": "TERMOESCRITA",
+      "rhs": [
+        "texto"
+      ],
+      "key": "TERMOESCRITA → texto"
+    },
+    {
+      "id": 24,
+      "lhs": "SELEÇÃO",
+      "rhs": [
+        "if",
+        "(",
+        "EXPRESSÃO",
+        ")",
+        "BLOCO",
+        "SENÃO"
+      ],
+      "key": "SELEÇÃO → if ( EXPRESSÃO ) BLOCO SENÃO"
+    },
+    {
+      "id": 25,
+      "lhs": "SENÃO",
+      "rhs": [
+        "else",
+        "BLOCO"
+      ],
+      "key": "SENÃO → else BLOCO"
+    },
+    {
+      "id": 26,
+      "lhs": "SENÃO",
+      "rhs": [],
+      "key": "SENÃO → ε"
+    },
+    {
+      "id": 27,
+      "lhs": "ENQUANTO",
+      "rhs": [
+        "while",
+        "(",
+        "EXPRESSÃO",
+        ")",
+        "BLOCO"
+      ],
+      "key": "ENQUANTO → while ( EXPRESSÃO ) BLOCO"
+    },
+    {
+      "id": 28,
+      "lhs": "ATRIBUIÇÃO",
+      "rhs": [
+        "id",
+        "=",
+        "COMPLEMENTO",
+        ";"
+      ],
+      "key": "ATRIBUIÇÃO → id = COMPLEMENTO ;"
+    },
+    {
+      "id": 29,
+      "lhs": "FUNÇÃO",
+      "rhs": [
+        "func",
+        "id",
+        "(",
+        "ARGUMENTOS",
+        ")"
+      ],
+      "key": "FUNÇÃO → func id ( ARGUMENTOS )"
+    },
+    {
+      "id": 30,
+      "lhs": "RETORNO",
+      "rhs": [
+        "return",
+        "EXPRESSÃO",
+        ";"
+      ],
+      "key": "RETORNO → return EXPRESSÃO ;"
+    },
+    {
+      "id": 31,
+      "lhs": "EXPR_E2",
+      "rhs": [
+        "&&",
+        "EXPR_RELACIONAL",
+        "EXPR_E2"
+      ],
+      "key": "EXPR_E2 → && EXPR_RELACIONAL EXPR_E2"
+    },
+    {
+      "id": 32,
+      "lhs": "EXPR_E2",
+      "rhs": [],
+      "key": "EXPR_E2 → ε"
+    },
+    {
+      "id": 33,
+      "lhs": "EXPR_RELACIONAL2",
+      "rhs": [
+        "comp",
+        "EXPR_ADITIVA"
+      ],
+      "key": "EXPR_RELACIONAL2 → comp EXPR_ADITIVA"
+    },
+    {
+      "id": 34,
+      "lhs": "EXPR_RELACIONAL2",
+      "rhs": [],
+      "key": "EXPR_RELACIONAL2 → ε"
+    },
+    {
+      "id": 35,
+      "lhs": "OP_ADITIVO",
+      "rhs": [
+        "+"
+      ],
+      "key": "OP_ADITIVO → +"
+    },
+    {
+      "id": 36,
+      "lhs": "OP_ADITIVO",
+      "rhs": [
+        "-"
+      ],
+      "key": "OP_ADITIVO → -"
+    },
+    {
+      "id": 37,
+      "lhs": "OP_MULTIPLICATIVO",
+      "rhs": [
+        "*"
+      ],
+      "key": "OP_MULTIPLICATIVO → *"
+    },
+    {
+      "id": 38,
+      "lhs": "OP_MULTIPLICATIVO",
+      "rhs": [
+        "/"
+      ],
+      "key": "OP_MULTIPLICATIVO → /"
+    },
+    {
+      "id": 39,
+      "lhs": "OP_MULTIPLICATIVO",
+      "rhs": [
+        "%"
+      ],
+      "key": "OP_MULTIPLICATIVO → %"
+    },
+    {
+      "id": 40,
+      "lhs": "TERMO",
+      "rhs": [
+        "id",
+        "DIMENSAO2"
+      ],
+      "key": "TERMO → id DIMENSAO2"
+    },
+    {
+      "id": 41,
+      "lhs": "TERMO",
+      "rhs": [
+        "CONSTANTE"
+      ],
+      "key": "TERMO → CONSTANTE"
+    },
+    {
+      "id": 42,
+      "lhs": "LISTAPARAMETROS",
+      "rhs": [
+        ",",
+        "TIPO",
+        "id",
+        "LISTAPARAMETROS"
+      ],
+      "key": "LISTAPARAMETROS → , TIPO id LISTAPARAMETROS"
+    },
+    {
+      "id": 43,
+      "lhs": "LISTAPARAMETROS",
+      "rhs": [],
+      "key": "LISTAPARAMETROS → ε"
+    },
+    {
+      "id": 44,
+      "lhs": "NOVOTERMOLEITURA",
+      "rhs": [
+        ",",
+        "TERMOLEITURA",
+        "NOVOTERMOLEITURA"
+      ],
+      "key": "NOVOTERMOLEITURA → , TERMOLEITURA NOVOTERMOLEITURA"
+    },
+    {
+      "id": 45,
+      "lhs": "NOVOTERMOLEITURA",
+      "rhs": [],
+      "key": "NOVOTERMOLEITURA → ε"
+    },
+    {
+      "id": 46,
+      "lhs": "NOVOTERMOESCRITA",
+      "rhs": [
+        ",",
+        "TERMOESCRITA",
+        "NOVOTERMOESCRITA"
+      ],
+      "key": "NOVOTERMOESCRITA → , TERMOESCRITA NOVOTERMOESCRITA"
+    },
+    {
+      "id": 47,
+      "lhs": "NOVOTERMOESCRITA",
+      "rhs": [],
+      "key": "NOVOTERMOESCRITA → ε"
+    },
+    {
+      "id": 48,
+      "lhs": "NOVO_ARGUMENTO",
+      "rhs": [
+        ",",
+        "EXPRESSÃO",
+        "NOVO_ARGUMENTO"
+      ],
+      "key": "NOVO_ARGUMENTO → , EXPRESSÃO NOVO_ARGUMENTO"
+    },
+    {
+      "id": 49,
+      "lhs": "NOVO_ARGUMENTO",
+      "rhs": [],
+      "key": "NOVO_ARGUMENTO → ε"
+    },
+    {
+      "id": 50,
+      "lhs": "EXPR_OU2",
+      "rhs": [
+        "||",
+        "EXPR_E",
+        "EXPR_OU2"
+      ],
+      "key": "EXPR_OU2 → || EXPR_E EXPR_OU2"
+    },
+    {
+      "id": 51,
+      "lhs": "EXPR_OU2",
+      "rhs": [],
+      "key": "EXPR_OU2 → ε"
+    },
+    {
+      "id": 52,
+      "lhs": "FATOR",
+      "rhs": [
+        "SINAL",
+        "TERMO"
+      ],
+      "key": "FATOR → SINAL TERMO"
+    },
+    {
+      "id": 53,
+      "lhs": "FATOR",
+      "rhs": [
+        "texto"
+      ],
+      "key": "FATOR → texto"
+    },
+    {
+      "id": 54,
+      "lhs": "FATOR",
+      "rhs": [
+        "!",
+        "FATOR"
+      ],
+      "key": "FATOR → ! FATOR"
+    },
+    {
+      "id": 55,
+      "lhs": "FATOR",
+      "rhs": [
+        "(",
+        "EXPRESSÃO",
+        ")"
+      ],
+      "key": "FATOR → ( EXPRESSÃO )"
+    },
+    {
+      "id": 56,
+      "lhs": "TIPO",
+      "rhs": [
+        "TIPOBASE",
+        "DIMENSÃO"
+      ],
+      "key": "TIPO → TIPOBASE DIMENSÃO"
+    },
+    {
+      "id": 57,
+      "lhs": "TIPORETORNO",
+      "rhs": [
+        "TIPO"
+      ],
+      "key": "TIPORETORNO → TIPO"
+    },
+    {
+      "id": 58,
+      "lhs": "TIPORETORNO",
+      "rhs": [
+        "void"
+      ],
+      "key": "TIPORETORNO → void"
+    },
+    {
+      "id": 59,
+      "lhs": "LISTAVARIÁVEIS",
+      "rhs": [
+        "TIPO",
+        "id",
+        "LISTAID",
+        ";",
+        "LISTAVARIÁVEIS"
+      ],
+      "key": "LISTAVARIÁVEIS → TIPO id LISTAID ; LISTAVARIÁVEIS"
+    },
+    {
+      "id": 60,
+      "lhs": "LISTAVARIÁVEIS",
+      "rhs": [],
+      "key": "LISTAVARIÁVEIS → ε"
+    },
+    {
+      "id": 61,
+      "lhs": "PARÂMETROS",
+      "rhs": [
+        "TIPO",
+        "id",
+        "LISTAPARAMETROS"
+      ],
+      "key": "PARÂMETROS → TIPO id LISTAPARAMETROS"
+    },
+    {
+      "id": 62,
+      "lhs": "PARÂMETROS",
+      "rhs": [],
+      "key": "PARÂMETROS → ε"
+    },
+    {
+      "id": 63,
+      "lhs": "DECFUNÇÃO",
+      "rhs": [
+        "TIPORETORNO",
+        "id",
+        "(",
+        "PARÂMETROS",
+        ")",
+        "BLOCO"
+      ],
+      "key": "DECFUNÇÃO → TIPORETORNO id ( PARÂMETROS ) BLOCO"
+    },
+    {
+      "id": 64,
+      "lhs": "LISTAFUNÇÕES",
+      "rhs": [
+        "DECFUNÇÃO",
+        "LISTAFUNÇÕES"
+      ],
+      "key": "LISTAFUNÇÕES → DECFUNÇÃO LISTAFUNÇÕES"
+    },
+    {
+      "id": 65,
+      "lhs": "LISTAFUNÇÕES",
+      "rhs": [],
+      "key": "LISTAFUNÇÕES → ε"
+    },
+    {
+      "id": 66,
+      "lhs": "PROGRAMA",
+      "rhs": [
+        "LISTAFUNÇÕES",
+        "PRINCIPAL"
+      ],
+      "key": "PROGRAMA → LISTAFUNÇÕES PRINCIPAL"
+    },
+    {
+      "id": 67,
+      "lhs": "EXPR_MULTIPLICATIVA2",
+      "rhs": [
+        "OP_MULTIPLICATIVO",
+        "FATOR",
+        "EXPR_MULTIPLICATIVA2"
+      ],
+      "key": "EXPR_MULTIPLICATIVA2 → OP_MULTIPLICATIVO FATOR EXPR_MULTIPLICATIVA2"
+    },
+    {
+      "id": 68,
+      "lhs": "EXPR_MULTIPLICATIVA2",
+      "rhs": [],
+      "key": "EXPR_MULTIPLICATIVA2 → ε"
+    },
+    {
+      "id": 69,
+      "lhs": "EXPR_MULTIPLICATIVA",
+      "rhs": [
+        "FATOR",
+        "EXPR_MULTIPLICATIVA2"
+      ],
+      "key": "EXPR_MULTIPLICATIVA → FATOR EXPR_MULTIPLICATIVA2"
+    },
+    {
+      "id": 70,
+      "lhs": "EXPR_ADITIVA2",
+      "rhs": [
+        "OP_ADITIVO",
+        "EXPR_MULTIPLICATIVA",
+        "EXPR_ADITIVA2"
+      ],
+      "key": "EXPR_ADITIVA2 → OP_ADITIVO EXPR_MULTIPLICATIVA EXPR_ADITIVA2"
+    },
+    {
+      "id": 71,
+      "lhs": "EXPR_ADITIVA2",
+      "rhs": [],
+      "key": "EXPR_ADITIVA2 → ε"
+    },
+    {
+      "id": 72,
+      "lhs": "EXPR_ADITIVA",
+      "rhs": [
+        "EXPR_MULTIPLICATIVA",
+        "EXPR_ADITIVA2"
+      ],
+      "key": "EXPR_ADITIVA → EXPR_MULTIPLICATIVA EXPR_ADITIVA2"
+    },
+    {
+      "id": 73,
+      "lhs": "EXPR_RELACIONAL",
+      "rhs": [
+        "EXPR_ADITIVA",
+        "EXPR_RELACIONAL2"
+      ],
+      "key": "EXPR_RELACIONAL → EXPR_ADITIVA EXPR_RELACIONAL2"
+    },
+    {
+      "id": 74,
+      "lhs": "EXPR_E",
+      "rhs": [
+        "EXPR_RELACIONAL",
+        "EXPR_E2"
+      ],
+      "key": "EXPR_E → EXPR_RELACIONAL EXPR_E2"
+    },
+    {
+      "id": 75,
+      "lhs": "EXPR_OU",
+      "rhs": [
+        "EXPR_E",
+        "EXPR_OU2"
+      ],
+      "key": "EXPR_OU → EXPR_E EXPR_OU2"
+    },
+    {
+      "id": 76,
+      "lhs": "EXPRESSÃO",
+      "rhs": [
+        "EXPR_OU"
+      ],
+      "key": "EXPRESSÃO → EXPR_OU"
+    },
+    {
+      "id": 77,
+      "lhs": "ARGUMENTOS",
+      "rhs": [
+        "EXPRESSÃO",
+        "NOVO_ARGUMENTO"
+      ],
+      "key": "ARGUMENTOS → EXPRESSÃO NOVO_ARGUMENTO"
+    },
+    {
+      "id": 78,
+      "lhs": "ARGUMENTOS",
+      "rhs": [],
+      "key": "ARGUMENTOS → ε"
+    },
+    {
+      "id": 79,
+      "lhs": "COMPLEMENTO",
+      "rhs": [
+        "EXPRESSÃO"
+      ],
+      "key": "COMPLEMENTO → EXPRESSÃO"
+    },
+    {
+      "id": 80,
+      "lhs": "COMPLEMENTO",
+      "rhs": [
+        "FUNÇÃO"
+      ],
+      "key": "COMPLEMENTO → FUNÇÃO"
+    },
+    {
+      "id": 81,
+      "lhs": "COMANDO",
+      "rhs": [
+        "LEITURA"
+      ],
+      "key": "COMANDO → LEITURA"
+    },
+    {
+      "id": 82,
+      "lhs": "COMANDO",
+      "rhs": [
+        "ESCRITA"
+      ],
+      "key": "COMANDO → ESCRITA"
+    },
+    {
+      "id": 83,
+      "lhs": "COMANDO",
+      "rhs": [
+        "ATRIBUIÇÃO"
+      ],
+      "key": "COMANDO → ATRIBUIÇÃO"
+    },
+    {
+      "id": 84,
+      "lhs": "COMANDO",
+      "rhs": [
+        "FUNÇÃO"
+      ],
+      "key": "COMANDO → FUNÇÃO"
+    },
+    {
+      "id": 85,
+      "lhs": "COMANDO",
+      "rhs": [
+        "SELEÇÃO"
+      ],
+      "key": "COMANDO → SELEÇÃO"
+    },
+    {
+      "id": 86,
+      "lhs": "COMANDO",
+      "rhs": [
+        "ENQUANTO"
+      ],
+      "key": "COMANDO → ENQUANTO"
+    },
+    {
+      "id": 87,
+      "lhs": "COMANDO",
+      "rhs": [
+        "RETORNO"
+      ],
+      "key": "COMANDO → RETORNO"
+    },
+    {
+      "id": 88,
+      "lhs": "COMANDO",
+      "rhs": [
+        "PARA"
+      ],
+      "key": "COMANDO → PARA"
+    },
+    {
+      "id": 89,
+      "lhs": "COMANDOS",
+      "rhs": [
+        "COMANDO",
+        "COMANDOS"
+      ],
+      "key": "COMANDOS → COMANDO COMANDOS"
+    },
+    {
+      "id": 90,
+      "lhs": "COMANDOS",
+      "rhs": [],
+      "key": "COMANDOS → ε"
+    },
+    {
+      "id": 91,
+      "lhs": "PARA",
+      "rhs": [
+        "for",
+        "(",
+        "INICIALIZACAO_FOR",
+        ";",
+        "CONDICAO_FOR",
+        ";",
+        "ATUALIZACAO_FOR",
+        ")",
+        "BLOCO"
+      ],
+      "key": "PARA → for ( INICIALIZACAO_FOR ; CONDICAO_FOR ; ATUALIZACAO_FOR ) BLOCO"
+    },
+    {
+      "id": 92,
+      "lhs": "INICIALIZACAO_FOR",
+      "rhs": [
+        "id",
+        "=",
+        "EXPRESSÃO"
+      ],
+      "key": "INICIALIZACAO_FOR → id = EXPRESSÃO"
+    },
+    {
+      "id": 93,
+      "lhs": "INICIALIZACAO_FOR",
+      "rhs": [],
+      "key": "INICIALIZACAO_FOR → ε"
+    },
+    {
+      "id": 94,
+      "lhs": "CONDICAO_FOR",
+      "rhs": [
+        "EXPRESSÃO"
+      ],
+      "key": "CONDICAO_FOR → EXPRESSÃO"
+    },
+    {
+      "id": 95,
+      "lhs": "CONDICAO_FOR",
+      "rhs": [],
+      "key": "CONDICAO_FOR → ε"
+    },
+    {
+      "id": 96,
+      "lhs": "ATUALIZACAO_FOR",
+      "rhs": [
+        "id",
+        "=",
+        "EXPRESSÃO"
+      ],
+      "key": "ATUALIZACAO_FOR → id = EXPRESSÃO"
+    },
+    {
+      "id": 97,
+      "lhs": "ATUALIZACAO_FOR",
+      "rhs": [],
+      "key": "ATUALIZACAO_FOR → ε"
+    }
+  ]
+}

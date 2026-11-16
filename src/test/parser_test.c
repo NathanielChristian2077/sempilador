@@ -115,6 +115,15 @@ static void test_artificial_tokens(void)
     assert(parser.current == COUNT(main_tokens) - 1);
     assert(parser_expect(&parser, TOK_EOF));
     
+    Token truncated_main[] = {
+        {.kind = TOK_MAIN}, {.kind = TOK_LPAREN}, {.kind = TOK_RPAREN},
+        {.kind = TOK_LBRACE}, {.kind = TOK_EOF}
+    };
+    assert(parser_init(&parser, truncated_main, COUNT(truncated_main)));
+    assert(!parse_main(&parser));
+    assert(parser.result.status == PARSE_SYNTAX_ERROR);
+    assert(parser.current == COUNT(truncated_main) - 1);
+
     for (size_t i = 0; i < 20; ++i)
         assert(parser_parse(main_tokens, COUNT(main_tokens)).status == PARSE_OK);
 }

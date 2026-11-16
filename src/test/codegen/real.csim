@@ -1,0 +1,17 @@
+main()
+{
+    float x, y, z;
+    int i;
+    i = 3;
+    x = 2.5;
+    y = x * i;
+    println("y=", y);
+    z = i / 2.0;
+    println("z=", z);
+    z = 7.5 % 2;
+    println("resto=", z);
+    y = -x + 1;
+    println(y);
+    z = 1.0 / 3.0;
+    println(z);
+}

@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 #include "../token/token.h"
 
@@ -16,6 +15,11 @@ typedef struct {
     uint32_t column;
 } Lexer;
 
+/* Borrow exactly length bytes until the caller has finished using all tokens.
+ * No terminator or padding is required. NULL source denotes an empty input.
+ * Positions are 1-based byte columns; CRLF counts as one line break.
+ * Comments are returned; the parser skips them. EOF is repeatable.
+ */
 void lexer_init(
     Lexer *lexer,
     const char *source,

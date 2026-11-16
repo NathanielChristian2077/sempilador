@@ -1,0 +1,20 @@
+main()
+{
+    int a, b, r, m;
+    a = 17;
+    b = 5;
+    r = a + b * 2 - (a - b) / 3;
+    println("r=", r);
+    r = a / b;
+    m = a % b;
+    println("div=", r, " mod=", m);
+    r = -a / b;
+    m = -a % b;
+    println("negdiv=", r, " negmod=", m);
+    r = -2147483648;
+    println("min=", r);
+    r = (a + 3) * (b - 1);
+    println(r);
+    r = 7 * 6;
+    println(r);
+}

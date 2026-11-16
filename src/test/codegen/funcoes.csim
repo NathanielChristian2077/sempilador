@@ -1,0 +1,44 @@
+int fatorial(int n)
+{
+    int r;
+    if (n <= 1) {
+        return 1;
+    }
+    r = func fatorial(n - 1);
+    return n * r;
+}
+
+int fib(int n)
+{
+    int a, b;
+    if (n < 2) {
+        return n;
+    }
+    a = func fib(n - 1);
+    b = func fib(n - 2);
+    return a + b;
+}
+
+float media(int a, int b)
+{
+    return (a + b) / 2.0;
+}
+
+void mostra(int x, float y)
+{
+    println("mostra ", x, " ", y);
+}
+
+main()
+{
+    int r;
+    float m;
+    r = func fatorial(5);
+    println("5! = ", r);
+    r = func fib(10);
+    println("fib(10) = ", r);
+    m = func media(3, 4);
+    println("media = ", m);
+    func mostra(r, m)
+    func fatorial(3)
+}
