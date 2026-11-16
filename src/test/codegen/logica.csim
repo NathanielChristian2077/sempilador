@@ -1,0 +1,31 @@
+boolean positivo(int n)
+{
+    return n > 0;
+}
+
+main()
+{
+    boolean a, b, c;
+    int zero, dez;
+    zero = 0;
+    dez = 10;
+    a = zero < dez;
+    b = dez <= zero;
+    println(a, " ", b);
+    c = !a;
+    println(c);
+    c = a && b;
+    println(c);
+    c = a || b;
+    println(c);
+    c = zero != 0 && dez / zero > 1;
+    println("e protegido: ", c);
+    c = zero == 0 || dez / zero > 1;
+    println("ou protegido: ", c);
+    c = func positivo(dez);
+    println(c);
+    c = func positivo(-3);
+    println(c);
+    if (a) { println("a verdadeiro"); } else { println("a falso"); }
+    if (b) { println("b verdadeiro"); } else { println("b falso"); }
+}

@@ -1,0 +1,36 @@
+main()
+{
+    int i, j, soma;
+    soma = 0;
+    i = 0;
+    while (i < 5) {
+        soma = soma + i;
+        i = i + 1;
+    }
+    println("while: ", soma);
+    for (i = 0; i < 3; i = i + 1) {
+        for (j = 0; j < 2; j = j + 1) {
+            println(i, ",", j);
+        }
+    }
+    i = 7;
+    if (i > 5) {
+        if (i > 10) { println("grande"); } else { println("medio"); }
+    } else {
+        println("pequeno");
+    }
+    i = 0;
+    for (; i < 8;) {
+        i = i + 3;
+    }
+    println("parcial: ", i);
+    i = 0;
+    for (;;) {
+        i = i + 1;
+        if (i == 3) {
+            println("fim em ", i);
+            return 0;
+            println("nunca");
+        }
+    }
+}

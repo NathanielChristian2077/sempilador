@@ -135,30 +135,30 @@ void semantic_model_destroy(SemanticModel *m)
 }
 const char *semantic_diagnostic_message(SemanticDiagnosticCode code)
 {
-    static const char *const messages[] = {"dimensão inválida ou tamanho excedido",
-                                           "declaração duplicada",
-                                           "identificador não declarado",
-                                           "identificador não é variável ou parâmetro",
-                                           "identificador não é função",
-                                           "operandos incompatíveis com operador",
-                                           "tipos incompatíveis na atribuição",
-                                           "condição deve ser boolean",
+    static const char *const messages[] = {"dimensao invalida ou tamanho excedido",
+                                           "declaracao duplicada",
+                                           "identificador nao declarado",
+                                           "identificador nao e variavel ou parametro",
+                                           "identificador nao e funcao",
+                                           "operandos incompativeis com operador",
+                                           "tipos incompativeis na atribuicao",
+                                           "condicao deve ser boolean",
                                            "quantidade de argumentos incorreta",
-                                           "tipo de argumento incompatível",
-                                           "tipo de retorno incompatível",
-                                           "função pode terminar sem retornar",
-                                           "índice deve ser int",
-                                           "quantidade de índices incompatível",
-                                           "índice constante fora dos limites",
-                                           "destino incompatível com scanf",
-                                           "tipo incompatível com println",
+                                           "tipo de argumento incompativel",
+                                           "tipo de retorno incompativel",
+                                           "funcao pode terminar sem retornar",
+                                           "indice deve ser int",
+                                           "quantidade de indices incompativel",
+                                           "indice constante fora dos limites",
+                                           "destino incompativel com scanf",
+                                           "tipo incompativel com println",
                                            "literal fora do intervalo",
                                            "divisor constante igual a zero",
-                                           "divisão ou resto inteiro fora do intervalo",
-                                           "memória insuficiente na análise semântica",
-                                           "limite de recursos da análise semântica",
-                                           "entrada inválida para análise semântica"};
+                                           "divisao ou resto inteiro fora do intervalo",
+                                           "memoria insuficiente na analise semantica",
+                                           "limite de recursos da analise semantica",
+                                           "entrada invalida para analise semantica"};
     return (unsigned)code < sizeof(messages) / sizeof(*messages)
                ? messages[code]
-               : "diagnóstico semântico desconhecido";
+               : "diagnostico semantico desconhecido";
 }

@@ -5,6 +5,8 @@ CPPFLAGS ?=
 LDFLAGS ?=
 LDLIBS ?=
 BUILD_DIR ?= bin
+LLI ?= lli
+OPT ?= opt
 RE2C ?= re2c
 # Checked-in output and CI use re2c 4.1. Suppress dates, versions and path directives.
 RE2CFLAGS = --no-generation-date --no-version --no-debug-info -W -Werror
@@ -14,11 +16,13 @@ PARSER = parser/parser.c parser/parser_stream.c parser/parser_stack.c \
          parser/parser_recovery.c parser/generated/ll1_tables.c \
          parser/ast.c parser/parser_ast.c
 SEMANTIC = symbol/semantic.c type/type.c
-SOURCES = source/source.c token/token.c $(LEXER) $(PARSER) symbol/symbol.c $(SEMANTIC)
-HEADERS = $(wildcard source/*.h token/*.h lexer/*.h parser/*.h parser/generated/*.h symbol/*.h type/*.h)
+SEMANTIC_ANALYSIS = semantic/semantic_model.c semantic/semantic_check.c semantic/semantic_constants.c
+CODEGEN = codegen/codegen.c
+SOURCES = source/source.c token/token.c $(LEXER) $(PARSER) symbol/symbol.c $(SEMANTIC)           $(SEMANTIC_ANALYSIS) $(CODEGEN)
+HEADERS = $(wildcard source/*.h token/*.h lexer/*.h parser/*.h parser/generated/*.h symbol/*.h type/*.h                      semantic/*.h codegen/*.h)
 SANITIZER_FLAGS = -std=c11 -g -O1 -Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined -fno-omit-frame-pointer
 
-.PHONY: build run clean regen-lexer check-generated test test-source test-token \
+.PHONY: build run run-llvm clean regen-lexer check-generated test test-source test-token \
         test-lexer test-lexer-contract test-parser test-parser-integration \
         test-parser-diagnostics test-parser-recovery test-parser-stream test-symbol test-type \
         test-semantic-symbol test-build test-sanitize test-parser-sanitize \
@@ -27,10 +31,15 @@ SANITIZER_FLAGS = -std=c11 -g -O1 -Wall -Wextra -Wpedantic -Werror -fsanitize=ad
 build: $(BUILD_DIR)/sempilador
 
 $(BUILD_DIR)/sempilador: main.c $(SOURCES) $(HEADERS) | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) main.c $(SOURCES) $(LDFLAGS) $(LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) main.c $(SOURCES) $(LDFLAGS) $(LDLIBS) -lm -o $@
 
 run: build
 	$(BUILD_DIR)/sempilador $(or $(FILE),test/valid.csim)
+
+# Compiles FILE to LLVM IR and runs it with lli.
+run-llvm: build
+	$(BUILD_DIR)/sempilador $(or $(FILE),test/valid.csim) $(BUILD_DIR)/programa.ll
+	$(LLI) $(BUILD_DIR)/programa.ll
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -110,14 +119,18 @@ test-semantic-symbol: $(BUILD_DIR)/semantic_symbol_test
 	$<
 
 test-build: build
-	$(BUILD_DIR)/sempilador test/valid.csim > $(BUILD_DIR)/test_build.out
+	$(BUILD_DIR)/sempilador test/valid.csim $(BUILD_DIR)/valid.ll > $(BUILD_DIR)/test_build.out
 	grep -q "programa v" $(BUILD_DIR)/test_build.out
+	grep -q "LLVM gerado em" $(BUILD_DIR)/test_build.out
+	@status=0; $(BUILD_DIR)/sempilador test/semantic_error.csim $(BUILD_DIR)/semantic_error.ll > $(BUILD_DIR)/test_semantic_error.out || status=$$?; test "$$status" -eq 1
+	grep -q "Linha 4, coluna 5: tipos incompat" $(BUILD_DIR)/test_semantic_error.out
+	test ! -e $(BUILD_DIR)/semantic_error.ll
 	@status=0; $(BUILD_DIR)/sempilador test/symbol.csim > $(BUILD_DIR)/test_build_error.out || status=$$?; test "$$status" -eq 1
 	grep -q "Linha 4, coluna 1: esperado" $(BUILD_DIR)/test_build_error.out
 	grep -q "contador" $(BUILD_DIR)/test_build_error.out
 	@status=0; $(BUILD_DIR)/sempilador test/invalid_number.csim > $(BUILD_DIR)/test_invalid_number.out || status=$$?; test "$$status" -eq 1
-	grep -Fq 'Linha 1, coluna 12: erro léxico' $(BUILD_DIR)/test_invalid_number.out
-	grep -Fq 'encontrado token inválido "2D"' $(BUILD_DIR)/test_invalid_number.out
+	grep -Fq 'Linha 1, coluna 12: erro lexico' $(BUILD_DIR)/test_invalid_number.out
+	grep -Fq 'encontrado token invalido "2D"' $(BUILD_DIR)/test_invalid_number.out
 
 test-sanitize:
 	ASAN_OPTIONS="$${ASAN_OPTIONS:+$$ASAN_OPTIONS:}halt_on_error=1:exitcode=99" \
@@ -171,7 +184,6 @@ $(BUILD_DIR)/ast_resource_test: test/ast_resource_test.c $(PARSER) $(LEXER) $(HE
 test-ast-resource: $(BUILD_DIR)/ast_resource_test
 	$<
 
-SEMANTIC_ANALYSIS = semantic/semantic_model.c semantic/semantic_check.c semantic/semantic_constants.c
 SEMANTIC_HEADERS = $(wildcard semantic/*.h)
 .PHONY: test-semantic-analysis
 test: test-semantic-analysis
@@ -188,3 +200,22 @@ test-semantic-resources: $(BUILD_DIR)/semantic_resource_test
 	$<
 test-semantic-sanitize:
 	$(MAKE) BUILD_DIR=$(BUILD_DIR)/sanitize CFLAGS="$(SANITIZER_FLAGS)" test-semantic-analysis test-semantic-resources
+
+# Each test/codegen/NAME.csim is compiled, checked by opt, run by lli with
+# NAME.in as input (if present) and compared with NAME.out.
+.PHONY: test-codegen
+test: test-codegen
+$(BUILD_DIR)/codegen_test: test/codegen_test.c $(CODEGEN) $(SEMANTIC_ANALYSIS) $(SEMANTIC_HEADERS) $(PARSER) $(LEXER) $(SEMANTIC) $(HEADERS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -UNDEBUG test/codegen_test.c $(CODEGEN) $(SEMANTIC_ANALYSIS) $(PARSER) $(LEXER) $(SEMANTIC) $(LDFLAGS) $(LDLIBS) -lm -o $@
+test-codegen: $(BUILD_DIR)/codegen_test build
+	$(BUILD_DIR)/codegen_test
+	@mkdir -p $(BUILD_DIR)/codegen
+	@for src in test/codegen/*.csim; do \
+		name=$$(basename $$src .csim); out=$(BUILD_DIR)/codegen/$$name; \
+		$(BUILD_DIR)/sempilador $$src $$out.ll > $$out.log || { cat $$out.log; exit 1; }; \
+		$(OPT) -passes=verify -disable-output $$out.ll || exit 1; \
+		input=test/codegen/$$name.in; test -f $$input || input=/dev/null; \
+		$(LLI) $$out.ll < $$input > $$out.out || { echo "codegen: $$name terminou com erro"; exit 1; }; \
+		diff --strip-trailing-cr test/codegen/$$name.out $$out.out || exit 1; \
+		echo "codegen: $$name OK"; \
+	done

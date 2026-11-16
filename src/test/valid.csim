@@ -1,4 +1,4 @@
-int[10] dobra(int x)
+int dobra(int x)
 {
     return x * 2;
 }

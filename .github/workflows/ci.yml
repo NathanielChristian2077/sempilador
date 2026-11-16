@@ -17,10 +17,10 @@ jobs:
       matrix:
         compiler: [gcc, clang]
     steps:
-      - name: Install compilers and re2c 4.1
+      - name: Install compilers, re2c 4.1 and LLVM tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends gcc clang libclang-rt-dev make re2c git ca-certificates
+          apt-get install -y --no-install-recommends gcc clang libclang-rt-dev make re2c git ca-certificates llvm
       - uses: actions/checkout@v4
       - name: Verify generated lexer
         run: make -C src check-generated

@@ -1,0 +1,7 @@
+main()
+{
+    println("100% certo, sem %d aqui");
+    println("acentuação: ção");
+    println("barra \ e fim");
+    println("a", "b", 1, 2.5, "c");
+}

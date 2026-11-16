@@ -1,0 +1,12 @@
+main()
+{
+    int n;
+    float f;
+    char c;
+    boolean b, d;
+    int[2] v;
+    scanf(n, f, c, b, d);
+    scanf(v[0], v[1]);
+    println("n=", n, " f=", f, " c=", c, " b=", b, " d=", d);
+    println("v=", v[0], ",", v[1]);
+}

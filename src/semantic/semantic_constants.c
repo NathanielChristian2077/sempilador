@@ -8,6 +8,14 @@
 #include <math.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
+/* MinGW/UCRT has no POSIX locale_t; map to its equivalents. */
+typedef _locale_t locale_t;
+#define newlocale(mask, name, base) _create_locale(LC_NUMERIC, name)
+#define strtod_l _strtod_l
+#define freelocale _free_locale
+#endif
+
 _Static_assert(sizeof(double) == 8 && DBL_MANT_DIG == 53 && DBL_MAX_EXP == 1024,
                "semantic constants require IEEE binary64 double");
 bool semantic_integer(AstText text, uint64_t maximum, uint64_t *out)

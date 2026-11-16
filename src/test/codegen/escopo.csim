@@ -1,0 +1,19 @@
+main()
+{
+    int x, i;
+    float[2] f;
+    boolean b;
+    println("zero: ", x, " ", f[1], " ", b);
+    x = 1;
+    if (x == 1) {
+        int x;
+        x = 2;
+        println("interno: ", x);
+    }
+    println("externo: ", x);
+    for (i = 0; i < 2; i = i + 1) {
+        int k;
+        k = k + 5;
+        println("k=", k);
+    }
+}
