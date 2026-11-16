@@ -67,29 +67,29 @@ class GenerationTests(unittest.TestCase):
             gen.analyze({"PROGRAMA": [("x",)], "OTHER": [("x",)]}, {"x": "X", "$": "EOF"})
 
     def test_token_contract_drift_is_rejected(self):
-        mapping = json.loads((ROOT / "grammar/token_map.json").read_text())
+        mapping = json.loads((ROOT / "grammar/token_map.json").read_text(encoding="utf-8"))
         mapping["id"] = "TOK_MISSPELLED"
         with self.assertRaisesRegex(ValueError, "differs"):
             gen.validate_tokens(mapping, ROOT.parent / "token/token.h")
 
     def test_reference_missing_column_is_rejected(self):
         grammar, _ = gen.read_grammar(ROOT / "grammar/first_follow.csv")
-        terminals = json.loads((ROOT / "grammar/token_map.json").read_text())
+        terminals = json.loads((ROOT / "grammar/token_map.json").read_text(encoding="utf-8"))
         _, _, table, rules = gen.analyze(grammar, terminals)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "reference.csv"
-            path.write_text("Não terminal,id\nPROGRAMA,\n")
+            path.write_text("Não terminal,id\nPROGRAMA,\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "columns"):
                 gen.compare_reference(path, grammar, terminals, table, rules)
 
     def test_stale_first_follow_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "grammar.csv"
-            with (ROOT / "grammar/first_follow.csv").open(newline="") as stream:
+            with (ROOT / "grammar/first_follow.csv").open(encoding="utf-8", newline="") as stream:
                 reader = csv.DictReader(stream)
                 rows, fields = list(reader), reader.fieldnames
             rows[0]["first"] = "id"
-            with path.open("w", newline="") as stream:
+            with path.open("w", encoding="utf-8", newline="") as stream:
                 writer = csv.DictWriter(stream, fieldnames=fields)
                 writer.writeheader()
                 writer.writerows(rows)
@@ -98,14 +98,14 @@ class GenerationTests(unittest.TestCase):
 
     def test_reference_corrupt_cell_is_rejected(self):
         grammar, _ = gen.read_grammar(ROOT / "grammar/first_follow.csv")
-        terminals = json.loads((ROOT / "grammar/token_map.json").read_text())
+        terminals = json.loads((ROOT / "grammar/token_map.json").read_text(encoding="utf-8"))
         _, _, table, rules = gen.analyze(grammar, terminals)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "reference.csv"
-            with (ROOT / "generated/tabela_analise.csv").open(newline="") as stream:
+            with (ROOT / "generated/tabela_analise.csv").open(encoding="utf-8", newline="") as stream:
                 rows = list(csv.reader(stream))
             rows[1][1] = "TIPOBASE → float"
-            with path.open("w", newline="") as stream:
+            with path.open("w", encoding="utf-8", newline="") as stream:
                 csv.writer(stream).writerows(rows)
             with self.assertRaisesRegex(ValueError, "mismatch"):
                 gen.compare_reference(path, grammar, terminals, table, rules)

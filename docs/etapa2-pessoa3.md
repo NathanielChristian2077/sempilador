@@ -1,8 +1,8 @@
 # Etapa 2: geração de LLVM IR
 
-Este incremento traduz a AST validada pela análise semântica para LLVM IR em
-texto e liga o fluxo completo na CLI: léxico, sintático, AST, semântica e
-geração. O IR é verificado por `opt` e executado por `lli` nos testes.
+O gerador traduz a AST validada pela análise semântica para LLVM IR textual.
+A CLI integra léxico, sintático, AST, semântica e geração. Os testes verificam
+o IR com `opt` e executam os programas com `lli`.
 
 ## Compilar, gerar e executar
 
@@ -10,11 +10,13 @@ geração. O IR é verificado por `opt` e executado por `lli` nos testes.
 make -C src build
 src/bin/sempilador programa.csim            # grava programa.ll ao lado
 src/bin/sempilador programa.csim saida.ll   # escolhe o arquivo de saída
-make -C src run-llvm FILE=programa.csim     # gera e executa com lli
+make run-llvm FILE=programa.csim            # caminho relativo à raiz
 make -C src test-codegen
 ```
 
 - `lli` e `opt` vêm do LLVM; use `LLI=` e `OPT=` para outro caminho.
+- O build e `test-core` dispensam essas ferramentas. `test-codegen` e `test`
+  exigem ambas.
 - Para um executável nativo: `clang programa.ll -o programa`.
 - A CLI retorna 1 se houver erro léxico, sintático ou semântico; nesse caso
   nenhum `.ll` é gravado.
@@ -86,6 +88,7 @@ elementos recebem valor pelo `scanf` ou por cópia do array inteiro.
 
 ## Compatibilidade com Windows
 
-`semantic/semantic_constants.c` usava `newlocale`/`strtod_l`, que não existem no
-MinGW. Um bloco `#ifdef _WIN32` mapeia esses nomes para `_create_locale`,
-`_strtod_l` e `_free_locale`; no Linux nada muda.
+O Makefile suporta executáveis `.exe` e receitas nativas de CMD. Os testes de
+CLI e LLVM utilizam Python. Para comandos e dependências, consultar o README.
+No MinGW, as operações de locale utilizam `_create_locale`, `_strtod_l` e
+`_free_locale`.
